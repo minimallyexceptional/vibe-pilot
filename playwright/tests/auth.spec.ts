@@ -45,7 +45,7 @@ test.describe('authentication flow', () => {
     await page.getByRole('button', { name: 'Verify email' }).click()
 
     await expect(page).toHaveURL(/\/dashboard/)
-    await expect(page.getByRole('heading', { name: 'Interactive counter' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Vibe coding journal' })).toBeVisible()
   })
 
   test('allows an existing user to sign in', async ({ page }) => {
@@ -69,7 +69,7 @@ test.describe('authentication flow', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page).toHaveURL(/\/dashboard/)
-    await expect(page.getByRole('heading', { name: 'Interactive counter' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Vibe coding journal' })).toBeVisible()
   })
 })
 
