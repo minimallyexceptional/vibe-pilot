@@ -20,9 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getClerkErrorMessage } from '@/lib/clerk'
 
 const onboardingHighlights = [
-  'Connect data sources in minutes with guided workflows',
-  'Built-in analytics dashboards that update in real time',
-  'Invite teammates and manage access with a single click',
+  'Guided vibe prompts to capture highlights and hurdles',
+  'Mood and energy tracking to learn from every session',
+  'Shared ritual boards for your late-night crew',
 ]
 
 type VerificationFormValues = {
@@ -169,12 +169,12 @@ export function SignUpRoute() {
       <Card className="border-none bg-gradient-to-br from-secondary/20 via-background to-primary/15 shadow-lg">
         <CardHeader className="space-y-4 pb-6 md:pb-8">
           <Badge variant="secondary" className="w-fit bg-primary/80 text-primary-foreground">
-            Get started today
+            New to Nightshift
           </Badge>
-          <CardTitle className="text-2xl text-primary">Launch your next experience</CardTitle>
+          <CardTitle className="text-2xl text-primary">Set the vibe for your next build</CardTitle>
           <CardDescription className="text-base text-muted-foreground">
-            Create an account to unlock modern routing, data fetching, and polished UI primitives
-            out of the box.
+            Join the companion app built for mindful late-night coding and intentional creative
+            rituals.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
@@ -196,10 +196,10 @@ export function SignUpRoute() {
           <Badge variant="outline" className="w-fit border-primary/50 text-primary">
             Create account
           </Badge>
-          <CardTitle className="text-3xl">Start building with TanStack</CardTitle>
+          <CardTitle className="text-3xl">Create your Nightshift account</CardTitle>
           <CardDescription>
-            Fill out the details below and we&apos;ll have you exploring data and shipping
-            interfaces in no time.
+            Tell us who is joining so we can tailor prompts, ritual reminders, and vibe tracking to
+            your goals.
           </CardDescription>
         </CardHeader>
         <CardContent>

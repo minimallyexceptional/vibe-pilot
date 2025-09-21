@@ -1,6 +1,6 @@
-# Vibe TanStack Starter
+# Nightshift
 
-This repository now ships a polished TanStack starter that layers shadcn/ui primitives on top of React Router, React Query, Tailwind CSS, and Vite so you can jump straight into building modern front-end experiences.
+Nightshift is a vibe coding companion experience built on the TanStack starter foundation. It pairs shadcn/ui primitives with React Router, React Query, Tailwind CSS, and Vite so you can explore mindful after-dark workflows while keeping the modern tooling you expect.
 
 ## Getting started
 
@@ -45,4 +45,4 @@ Open your browser at [http://localhost:5173](http://localhost:5173) to see the s
 - [Vite](https://vitejs.dev/) for lightning-fast builds and hot module replacement
 - Devtools for both the router and React Query to aid development
 
-Happy building!
+Happy Nightshifting!

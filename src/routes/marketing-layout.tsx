@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router'
-import { Sparkles } from 'lucide-react'
+import { MoonStar, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,9 +14,9 @@ export function MarketingLayout() {
           <div className="flex items-center gap-6">
             <Link to="/" className="flex items-center gap-2 text-lg font-semibold">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Sparkles className="h-4 w-4" />
+                <MoonStar className="h-4 w-4" />
               </span>
-              TanStack Starter
+              Nightshift
             </Link>
             <nav className="hidden items-center gap-4 text-sm font-medium text-muted-foreground sm:flex">
               <Link
@@ -80,11 +80,11 @@ export function MarketingLayout() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="hidden sm:inline-flex">
-              React · Vite
+              Nightly builds welcome
             </Badge>
             <SignedOut>
               <Button className="hidden sm:inline-flex" size="sm" asChild>
-                <Link to="/sign-up">Get started</Link>
+                <Link to="/sign-up">Start journaling</Link>
               </Button>
             </SignedOut>
             <SignedIn>
@@ -111,13 +111,14 @@ export function MarketingLayout() {
             <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Sparkles className="h-3.5 w-3.5" />
             </span>
-            Built with TanStack Router & Query
+            Crafted for after-dark builders
           </p>
           <p>
-            Need to customize? Start editing{' '}
+            Want to customize Nightshift? Edit{' '}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               src/routes/index.tsx
             </code>
+            .
           </p>
         </div>
       </footer>
