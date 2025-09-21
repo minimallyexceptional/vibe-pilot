@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Layers3, LayoutDashboard, LineChart, Rocket } from 'lucide-react'
+import { ArrowRight, MoonStar, NotebookPen, Sparkles, Activity } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,29 +16,29 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 const fetchGreeting = async () => {
   await new Promise((resolve) => setTimeout(resolve, 400))
-  return 'Welcome to your TanStack-powered starter!'
+  return 'Welcome to Nightshift, your vibe coding companion for mindful late-night builds.'
 }
 
 const features = [
   {
-    title: 'Type-safe routing',
-    description: 'Co-locate data loaders, code-split routes, and enjoy end-to-end type safety.',
-    href: 'https://tanstack.com/router/latest/docs/framework/react/overview',
-    icon: LayoutDashboard,
+    title: 'Guided session journaling',
+    description: 'Capture the soundtrack, the spark, and the blockers from every Nightshift.',
+    href: '/sign-up',
+    icon: NotebookPen,
   },
   {
-    title: 'Data layer superpowers',
+    title: 'Mood & energy trends',
     description:
-      'Fetch, cache, and revalidate with confidence using TanStack Query out of the box.',
-    href: 'https://tanstack.com/query/latest',
-    icon: LineChart,
+      'Spot how your energy evolves through the week to schedule sessions intentionally.',
+    href: '/pricing',
+    icon: Activity,
   },
   {
-    title: 'Component driven UI',
+    title: 'Flow ritual library',
     description:
-      'Leverage shadcn/ui primitives with Tailwind CSS tokens to move fast and stay polished.',
-    href: 'https://ui.shadcn.com',
-    icon: Layers3,
+      'Save warm-ups, resets, and cool-downs so your future self can reenter the zone fast.',
+    href: '/dashboard',
+    icon: Sparkles,
   },
 ]
 
@@ -53,10 +53,10 @@ export function HomeRoute() {
       <Card className="overflow-hidden border-none bg-gradient-to-br from-primary/15 via-background to-secondary/30 shadow-xl">
         <CardHeader className="space-y-6 pb-0">
           <Badge variant="outline" className="w-fit border-primary/60 text-primary">
-            Starter toolkit
+            Nightshift
           </Badge>
           <CardTitle className="text-3xl leading-tight md:text-4xl">
-            Ship a modern TanStack experience in record time
+            Build your vibe coding ritual, one Nightshift at a time
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground md:text-lg">
             {isLoading ? (
@@ -72,30 +72,26 @@ export function HomeRoute() {
         <CardContent className="flex flex-col gap-6 pb-8 pt-8 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-3">
             <Button size="lg" asChild>
-              <a href="https://tanstack.com" target="_blank" rel="noreferrer">
-                Explore TanStack
-              </a>
+              <Link to="/sign-up">Start your journal</Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <a href="https://ui.shadcn.com" target="_blank" rel="noreferrer">
-                Browse shadcn components
-              </a>
+              <Link to="/pricing">View pricing</Link>
             </Button>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Rocket className="h-4 w-4 text-primary" />
-            Ready for rapid iteration with hot reloading and smart caching
+            <MoonStar className="h-4 w-4 text-primary" />
+            Designed for calm, intentional, after-dark coding sessions
           </div>
         </CardContent>
         <CardFooter className="flex flex-wrap gap-2 text-xs text-muted-foreground">
           <Badge variant="secondary" className="bg-secondary/70 text-secondary-foreground">
-            TypeScript
+            Session reflections
           </Badge>
           <Badge variant="secondary" className="bg-secondary/70 text-secondary-foreground">
-            Tailwind CSS
+            Mood tracking
           </Badge>
           <Badge variant="secondary" className="bg-secondary/70 text-secondary-foreground">
-            TanStack Router + Query
+            Flow rituals
           </Badge>
         </CardFooter>
       </Card>
@@ -114,15 +110,10 @@ export function HomeRoute() {
             </CardHeader>
             <CardFooter className="pt-0">
               <Button variant="link" className="px-0" asChild>
-                <a
-                  href={feature.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1"
-                >
-                  Learn more
+                <Link to={feature.href} className="flex items-center gap-1">
+                  Explore
                   <ArrowRight className="h-4 w-4" />
-                </a>
+                </Link>
               </Button>
             </CardFooter>
           </Card>
@@ -131,10 +122,10 @@ export function HomeRoute() {
 
       <Card className="border-dashed border-muted/70 bg-card/80">
         <CardHeader className="space-y-4">
-          <CardTitle className="text-2xl">Make it yours</CardTitle>
+          <CardTitle className="text-2xl">Bring intention to your next session</CardTitle>
           <CardDescription>
-            Use the file system router, tanstack query hooks, and shadcn/ui primitives to compose
-            polished interfaces. Update the home route to explore live reload and strong typing.
+            Nightshift captures the details that keep your vibe high—set a focus, log the playlist,
+            and note what to adjust before your next coding deep dive.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -144,17 +135,16 @@ export function HomeRoute() {
               <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
                 src/routes/index.tsx
               </code>{' '}
-              and save to see changes instantly.
+              to tailor the story to your product.
             </p>
             <p>
-              Prefer another page? Create a new route in{' '}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">src/routes</code>{' '}
-              and add it to the router tree.
+              Ready to log a session? Head to the dashboard journal and start capturing your next
+              Nightshift.
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link to="/" className="flex items-center gap-1">
-              View route source
+            <Link to="/dashboard" className="flex items-center gap-1">
+              Peek at the journal
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>

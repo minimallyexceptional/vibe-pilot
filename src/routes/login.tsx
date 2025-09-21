@@ -94,10 +94,10 @@ export function LoginRoute() {
           <Badge variant="outline" className="w-fit border-primary/50 text-primary">
             Welcome back
           </Badge>
-          <CardTitle className="text-3xl">Sign in to continue</CardTitle>
+          <CardTitle className="text-3xl">Sign in to Nightshift</CardTitle>
           <CardDescription>
-            Access your project dashboard, manage data sources, and collaborate with your team in
-            one place.
+            Revisit your vibe journal, review what fueled last night&#39;s flow, and plan the next
+            session with intention.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -193,12 +193,12 @@ export function LoginRoute() {
         <CardFooter className="flex flex-col gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-2 rounded-md border border-muted px-3 py-2 text-xs text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-primary" />
-            Your credentials are encrypted in transit.
+            Nightshift keeps your credentials encrypted in transit.
           </div>
           <p>
-            Don&apos;t have an account?{' '}
+            Need an account?{' '}
             <Button variant="link" size="sm" className="h-auto px-0" asChild>
-              <Link to="/sign-up">Create one now</Link>
+              <Link to="/sign-up">Join Nightshift</Link>
             </Button>
           </p>
         </CardFooter>
@@ -206,26 +206,27 @@ export function LoginRoute() {
       <Card className="border-none bg-gradient-to-br from-primary/15 via-background to-secondary/20 shadow-lg">
         <CardHeader className="space-y-4 pb-6 text-primary-foreground md:pb-8">
           <Badge variant="secondary" className="w-fit bg-primary/80 text-primary-foreground">
-            Why teams choose us
+            Nightly insights
           </Badge>
-          <CardTitle className="text-2xl text-primary">Stay in sync effortlessly</CardTitle>
+          <CardTitle className="text-2xl text-primary">Stay aligned with your flow</CardTitle>
           <CardDescription className="text-base text-primary/90">
-            Real-time data, collaboration tools, and analytics dashboards are all available as soon
-            as you sign in.
+            Keep your rituals, highlights, and hurdles in one place so every Nightshift starts
+            grounded.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-primary/90">
           <div className="rounded-lg border border-primary/30 bg-background/80 p-4">
-            <h3 className="text-base font-semibold text-primary">Unified workspace</h3>
+            <h3 className="text-base font-semibold text-primary">Nightly recap</h3>
             <p className="text-sm text-primary/80">
-              Integrate sources, monitor queries, and ship experiences without context switching.
+              See what lifted your energy and which blockers slowed you down so you can iterate
+              mindfully.
             </p>
           </div>
           <div className="rounded-lg border border-primary/30 bg-background/80 p-4">
-            <h3 className="text-base font-semibold text-primary">Secure by default</h3>
+            <h3 className="text-base font-semibold text-primary">Flow rituals</h3>
             <p className="text-sm text-primary/80">
-              Role-based access controls and audit trails help your team stay compliant and
-              confident.
+              Save the warm-ups, playlists, and wind-down habits that keep your team inspired night
+              after night.
             </p>
           </div>
         </CardContent>

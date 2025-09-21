@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { ArrowRight, Check, LifeBuoy, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, HeartHandshake, MoonStar, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,16 +16,16 @@ import { cn } from '@/lib/utils'
 
 const guarantees = [
   {
-    title: '30-day satisfaction guarantee',
+    title: '30-night vibe check',
     description:
-      'Try any paid plan for a full month. If it does not fit, we will refund your most recent payment—no questions asked.',
-    icon: ShieldCheck,
+      'Try any paid plan for a full moon cycle. If Nightshift is not amplifying your flow, we will refund your most recent payment—no questions asked.',
+    icon: MoonStar,
   },
   {
-    title: 'Always available help',
+    title: 'Coaches on call',
     description:
-      'Our global support engineers respond around the clock to keep your deployment pipeline healthy and performant.',
-    icon: LifeBuoy,
+      'Our flow team answers within hours to help you interpret vibe trends or co-create rituals that keep your nights inspired.',
+    icon: HeartHandshake,
   },
 ]
 
@@ -38,16 +38,16 @@ export function PricingRoute() {
         </Badge>
         <div className="space-y-4">
           <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
-            Flexible plans that scale with your team
+            Flexible rhythms for every Nightshift crew
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            Move from idea to production with predictable pricing. Every plan uses the same fast
-            infrastructure so you can build and ship without trade-offs.
+            Start solo or bring your entire nocturnal team. Each plan includes the vibe journal,
+            ritual templates, and insights you need to stay in flow.
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-sm text-primary">
           <Sparkles className="h-4 w-4" />
-          Cancel or change plans at any time—no hidden fees.
+          Change plans anytime—your journal stays with you.
         </div>
       </section>
 
@@ -81,7 +81,7 @@ export function PricingRoute() {
                 </div>
                 {plan.highlighted ? (
                   <Badge variant="secondary" className="bg-secondary/70 text-secondary-foreground">
-                    Save 20%
+                    Best for collaborators
                   </Badge>
                 ) : null}
               </div>
@@ -122,23 +122,23 @@ export function PricingRoute() {
             <div className="space-y-1">
               <CardTitle className="text-2xl">All plans include</CardTitle>
               <CardDescription>
-                Deploy instantly, collaborate with your team, and stay confident with built-in
-                observability across every tier.
+                Journaling prompts, vibe analytics, and ritual reminders to keep your coding nights
+                focused and restorative.
               </CardDescription>
             </div>
             <Button variant="outline" asChild>
               <Link to="/login" className="flex items-center gap-1">
-                View dashboard
+                Preview dashboard
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </CardHeader>
           <CardContent className="grid gap-4 sm:grid-cols-2">
             {[
-              'Unlimited previews and instant rollbacks',
-              'Role-based access control out of the box',
-              'Performance analytics with retention cohorts',
-              'Global edge network with smart caching',
+              'Personalized vibe prompts tailored to your goals',
+              'Weekly recap emails with highlight + hurdle summaries',
+              'Playlist pairing suggestions for deep work focus',
+              'Exportable sessions for sharing with collaborators',
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-3 text-sm text-muted-foreground">
                 <span className="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -151,10 +151,10 @@ export function PricingRoute() {
         </Card>
         <Card className="border-muted/70 bg-card/80">
           <CardHeader className="space-y-4">
-            <CardTitle className="text-xl">We are on your side</CardTitle>
+            <CardTitle className="text-xl">We are in this Nightshift with you</CardTitle>
             <CardDescription>
-              Whether you are just getting started or migrating an enterprise workload, we partner
-              with your team from day one.
+              Share the story of your team’s vibe. We listen, adapt rituals, and keep you energized
+              through every release window.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">

@@ -2,10 +2,10 @@ import { Outlet, RouterProvider, RootRoute, Route, createRouter } from '@tanstac
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 
 import {
-  DashboardCounterRoute,
-  DashboardHelloRoute,
   DashboardIndexRoute,
+  DashboardJournalRoute,
   DashboardLayout,
+  DashboardRitualsRoute,
 } from './routes/dashboard'
 import { AccountManagementRoute } from './routes/account'
 import { MarketingLayout } from './routes/marketing-layout'
@@ -65,16 +65,16 @@ const dashboardIndexRoute = new Route({
   component: DashboardIndexRoute,
 })
 
-const dashboardCounterRoute = new Route({
+const dashboardJournalRoute = new Route({
   getParentRoute: () => dashboardRoute,
-  path: 'counter',
-  component: DashboardCounterRoute,
+  path: 'journal',
+  component: DashboardJournalRoute,
 })
 
-const dashboardHelloRoute = new Route({
+const dashboardRitualsRoute = new Route({
   getParentRoute: () => dashboardRoute,
-  path: 'hello',
-  component: DashboardHelloRoute,
+  path: 'rituals',
+  component: DashboardRitualsRoute,
 })
 
 const dashboardAccountRoute = new Route({
@@ -87,8 +87,8 @@ const routeTree = rootRoute.addChildren([
   marketingRoute.addChildren([homeRoute, pricingRoute, loginRoute, signUpRoute]),
   dashboardRoute.addChildren([
     dashboardIndexRoute,
-    dashboardCounterRoute,
-    dashboardHelloRoute,
+    dashboardJournalRoute,
+    dashboardRitualsRoute,
     dashboardAccountRoute,
   ]),
 ])

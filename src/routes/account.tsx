@@ -20,9 +20,9 @@ import { cn, getInitials } from '@/lib/utils'
 import { getStripe } from '@/lib/stripe'
 
 const stripePriceIdByPlan: Record<string, string | undefined> = {
-  Starter: import.meta.env.VITE_STRIPE_PRICE_ID_STARTER,
-  Growth: import.meta.env.VITE_STRIPE_PRICE_ID_GROWTH,
-  Scale: import.meta.env.VITE_STRIPE_PRICE_ID_SCALE,
+  'Night Owl': import.meta.env.VITE_STRIPE_PRICE_ID_STARTER,
+  'Flow State': import.meta.env.VITE_STRIPE_PRICE_ID_GROWTH,
+  Constellation: import.meta.env.VITE_STRIPE_PRICE_ID_SCALE,
 }
 
 const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
