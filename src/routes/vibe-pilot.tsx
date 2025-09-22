@@ -1,4 +1,5 @@
 import React from 'react'
+import { useParams } from '@tanstack/react-router'
 import { Bot, ClipboardList, MessageSquarePlus, RefreshCcw, Rocket, Sparkles } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { requestVibePilotCompletion, type VibePilotConfig } from '@/lib/vibe-pilot-ai'
 import type { VibePilotChatMessage, VibePilotMode } from '@/lib/vibe-pilot-ai'
 import { cn } from '@/lib/utils'
+import { useProjects } from '@/lib/projects'
 
 const toneOptions = [
   { value: 'encouraging product coach', label: 'Encouraging coach' },
@@ -86,6 +88,8 @@ export function DashboardVibePilotRoute() {
   const [projectName, setProjectName] = React.useState('')
   const [audience, setAudience] = React.useState('')
   const [focusDetails, setFocusDetails] = React.useState('')
+  const [hasEditedProjectName, setHasEditedProjectName] = React.useState(false)
+  const [hasEditedFocusDetails, setHasEditedFocusDetails] = React.useState(false)
   const [tone, setTone] = React.useState<(typeof toneOptions)[number]['value']>(
     toneOptions[0].value,
   )
@@ -95,6 +99,45 @@ export function DashboardVibePilotRoute() {
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [kickoffStatus, setKickoffStatus] = React.useState<KickoffStatus>('idle')
   const [error, setError] = React.useState<string | null>(null)
+
+  const { projectId } = useParams({ from: '/dashboard/$projectId/vibe-pilot' })
+  const { activeProject, logProjectActivity } = useProjects()
+  const activeProjectName = activeProject?.name ?? ''
+  const activeProjectSummary = activeProject?.summary ?? ''
+  const activeProjectFocus = activeProject?.focus ?? ''
+  const projectHeroName = activeProjectName || 'your Nightshift project'
+  const heroDescription =
+    activeProjectSummary ||
+    'Spin up an AI copilot that adapts to your goals—generate detailed design docs or partner on growth strategy in minutes.'
+  const heroFocusLine = activeProjectFocus ? ` We’ll keep momentum on ${activeProjectFocus}.` : ''
+
+  const hasPrefilledProjectIdRef = React.useRef<string | null>(null)
+
+  React.useEffect(() => {
+    if (!projectId) {
+      return
+    }
+
+    if (hasPrefilledProjectIdRef.current !== projectId) {
+      hasPrefilledProjectIdRef.current = projectId
+      setHasEditedProjectName(false)
+      setHasEditedFocusDetails(false)
+    }
+
+    if (!hasEditedProjectName && activeProjectName) {
+      setProjectName(activeProjectName)
+    }
+
+    if (!hasEditedFocusDetails && activeProjectFocus) {
+      setFocusDetails(activeProjectFocus)
+    }
+  }, [
+    projectId,
+    activeProjectName,
+    activeProjectFocus,
+    hasEditedProjectName,
+    hasEditedFocusDetails,
+  ])
 
   const messagesRef = React.useRef<ChatMessage[]>([])
   const endRef = React.useRef<HTMLDivElement | null>(null)
@@ -243,6 +286,9 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
         tone,
       }
       setSessionConfig(config)
+      if (projectId) {
+        logProjectActivity(projectId)
+      }
       setPhase('chat')
       setKickoffStatus('running')
       setMessages([])
@@ -288,6 +334,8 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     setAudience('')
     setMode('design')
     setTone(toneOptions[0].value)
+    setHasEditedProjectName(false)
+    setHasEditedFocusDetails(false)
   }
 
   const canProceed = React.useMemo(() => {
@@ -308,15 +356,15 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
 
   const wizardDescription = React.useMemo(() => {
     if (stepIndex === 0) {
-      return 'Choose how Vibe Pilot should collaborate on this session.'
+      return `Choose how Vibe Pilot should collaborate on ${projectHeroName}'s next session.`
     }
 
     if (stepIndex === 1) {
-      return 'Tell Vibe Pilot what you are building and who it is for.'
+      return `Tell Vibe Pilot what ${projectHeroName} is building and who it's for.`
     }
 
-    return 'Share the details you already have so the AI can kick things off in the right direction.'
-  }, [stepIndex])
+    return `Share the context you already have so the AI can kick things off with ${projectHeroName}'s goals in mind.`
+  }, [stepIndex, projectHeroName])
 
   const chatHeaderCopy = React.useMemo(() => {
     if (!sessionConfig) {
@@ -419,11 +467,11 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
           </span>
         </div>
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Guide your next product move with AI
+          Guide the next move for {projectHeroName} with AI
         </h1>
         <p className="text-base text-muted-foreground sm:text-lg">
-          Spin up an AI copilot that adapts to your goals—generate detailed design docs or partner
-          on growth strategy in minutes.
+          {heroDescription}
+          {heroFocusLine}
         </p>
       </div>
 
@@ -437,7 +485,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
               </CardTitle>
               <CardDescription className="text-base text-muted-foreground">
                 Pick a collaboration style and we will collect the right context before launching
-                straight into a tailored ChatGPT session.
+                straight into a tailored ChatGPT session for {projectHeroName}.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -542,8 +590,11 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
                   <Input
                     id="project-name"
                     value={projectName}
-                    onChange={(event) => setProjectName(event.target.value)}
-                    placeholder="e.g. Nightshift mobile companion"
+                    onChange={(event) => {
+                      setProjectName(event.target.value)
+                      setHasEditedProjectName(true)
+                    }}
+                    placeholder={activeProjectName || 'e.g. Nightshift mobile companion'}
                     required
                   />
                 </div>
@@ -570,11 +621,18 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
                   <textarea
                     id="project-details"
                     value={focusDetails}
-                    onChange={(event) => setFocusDetails(event.target.value)}
+                    onChange={(event) => {
+                      setFocusDetails(event.target.value)
+                      setHasEditedFocusDetails(true)
+                    }}
                     placeholder={
                       mode === 'design'
-                        ? 'List the core features, flows, and constraints you want to cover.'
-                        : 'What areas should we co-create on? Pricing, partnerships, onboarding, community?'
+                        ? activeProjectFocus
+                          ? `List the core features, flows, and constraints you want to cover for ${activeProjectFocus}.`
+                          : 'List the core features, flows, and constraints you want to cover.'
+                        : activeProjectFocus
+                          ? `What areas should we co-create on to move ${activeProjectFocus} forward?`
+                          : 'What areas should we co-create on? Pricing, partnerships, onboarding, community?'
                     }
                     className="min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     required

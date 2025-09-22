@@ -1,6 +1,7 @@
 import React from 'react'
-import { Link, Navigate, Outlet } from '@tanstack/react-router'
+import { Link, Navigate, Outlet, useParams } from '@tanstack/react-router'
 import {
+  ArrowLeft,
   ArrowRight,
   Bot,
   ChevronLeft,
@@ -30,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ModeToggle } from '@/components/mode-toggle'
 import { SignedIn, SignedOut, UserButton, isClerkConfigured, useUser } from '@/lib/clerk'
+import { useProjects } from '@/lib/projects'
 import { cn, getInitials } from '@/lib/utils'
 
 const APP_NAME = 'Nightshift'
@@ -38,19 +40,19 @@ const sidebarItems = [
   {
     label: 'Vibe Pilot',
     description: 'Spin up an AI copilot for product design and strategy.',
-    to: '/dashboard/vibe-pilot',
+    to: '/dashboard/$projectId/vibe-pilot',
     icon: Bot,
   },
   {
     label: 'Vibe Journal',
     description: 'Capture the highlights and hurdles from every session.',
-    to: '/dashboard/journal',
+    to: '/dashboard/$projectId/journal',
     icon: NotebookPen,
   },
   {
     label: 'Flow Rituals',
     description: 'Design routines that help your crew enter the zone.',
-    to: '/dashboard/rituals',
+    to: '/dashboard/$projectId/rituals',
     icon: Sparkles,
   },
 ] as const
@@ -70,10 +72,12 @@ const placeholderAccountUser: SidebarAccountUser = {
 function SidebarAccountMenu({
   isCollapsed,
   user,
+  projectId,
   onNavigate,
 }: {
   isCollapsed: boolean
   user: SidebarAccountUser
+  projectId: string
   onNavigate?: () => void
 }) {
   const initials = React.useMemo(() => getInitials(user.name) || 'AP', [user.name])
@@ -112,7 +116,11 @@ function SidebarAccountMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild onSelect={() => onNavigate?.()}>
-          <Link to="/dashboard/account" className="flex w-full items-center justify-between gap-2">
+          <Link
+            to="/dashboard/$projectId/account"
+            params={{ projectId }}
+            className="flex w-full items-center justify-between gap-2"
+          >
             <span className="text-sm font-medium">Account management</span>
             <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </Link>
@@ -204,10 +212,30 @@ const initialJournalEntries: JournalEntry[] = [
 ]
 
 export function DashboardLayout() {
+  const { projectId } = useParams({ from: '/dashboard/$projectId' })
+  const { projects, activeProject, selectProject } = useProjects()
   const [isCollapsed, setIsCollapsed] = React.useState(false)
   const [isMobileOpen, setIsMobileOpen] = React.useState(false)
   const authEnabled = isClerkConfigured
   const { user } = useUser()
+
+  React.useEffect(() => {
+    if (projectId) {
+      selectProject(projectId)
+    }
+  }, [projectId, selectProject])
+
+  const project = React.useMemo(() => {
+    if (!projectId) {
+      return null
+    }
+
+    if (activeProject && activeProject.id === projectId) {
+      return activeProject
+    }
+
+    return projects.find((item) => item.id === projectId) ?? null
+  }, [activeProject, projects, projectId])
 
   const sidebarAccountUser = React.useMemo<SidebarAccountUser>(() => {
     if (user) {
@@ -242,6 +270,10 @@ export function DashboardLayout() {
     () => cn(baseNavItemClass, 'bg-primary/10 text-primary hover:bg-primary/10'),
     [baseNavItemClass],
   )
+
+  if (!project) {
+    return <Navigate to="/dashboard" replace />
+  }
 
   return (
     <>
@@ -293,6 +325,7 @@ export function DashboardLayout() {
                 <Link
                   key={item.to}
                   to={item.to}
+                  params={{ projectId: project.id }}
                   className={baseNavItemClass}
                   onClick={() => setIsMobileOpen(false)}
                   activeOptions={{ exact: true }}
@@ -316,6 +349,7 @@ export function DashboardLayout() {
                   <SidebarAccountMenu
                     isCollapsed={isCollapsed}
                     user={sidebarAccountUser}
+                    projectId={project.id}
                     onNavigate={() => setIsMobileOpen(false)}
                   />
                 </SignedIn>
@@ -327,14 +361,15 @@ export function DashboardLayout() {
               <SidebarAccountMenu
                 isCollapsed={isCollapsed}
                 user={sidebarAccountUser}
+                projectId={project.id}
                 onNavigate={() => setIsMobileOpen(false)}
               />
             )}
           </div>
         </aside>
         <div className="flex flex-1 min-h-0 flex-col overflow-hidden md:pl-0">
-          <header className="flex h-16 items-center justify-between gap-3 border-b bg-background/80 px-4 backdrop-blur">
-            <div className="flex items-center gap-3">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-background/80 px-4 py-3 backdrop-blur">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
@@ -344,6 +379,34 @@ export function DashboardLayout() {
               >
                 <Menu className="h-5 w-5" />
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="gap-1 px-2 text-xs font-medium md:px-3 md:text-sm"
+              >
+                <Link to="/dashboard" className="inline-flex items-center gap-1">
+                  <ArrowLeft className="h-4 w-4" />
+                  Projects
+                </Link>
+              </Button>
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold text-foreground sm:text-lg">
+                    {project.name}
+                  </p>
+                  <Badge variant="secondary" className="bg-secondary/80 text-secondary-foreground">
+                    {project.status}
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    {project.focus}
+                  </span>
+                  <span className="hidden min-w-0 truncate sm:inline">{project.summary}</span>
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <ModeToggle />
@@ -368,10 +431,11 @@ export function DashboardLayout() {
                     </div>
                     <div className="space-y-1">
                       <h2 className="text-xl font-semibold text-foreground">
-                        Sign in to open your Nightshift journal
+                        Sign in to open {project.name}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        Your entries, rituals, and insights appear here once you authenticate.
+                        Authenticate to access this project&apos;s journal entries, rituals, and
+                        copilots.
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-3">
@@ -403,6 +467,14 @@ export function DashboardJournalRoute() {
   const [challenge, setChallenge] = React.useState('')
   const [soundtrack, setSoundtrack] = React.useState('')
   const [nextFocus, setNextFocus] = React.useState('')
+
+  const { projectId } = useParams({ from: '/dashboard/$projectId/journal' })
+  const { activeProject, logProjectActivity } = useProjects()
+  const projectName = activeProject?.name ?? 'this project'
+  const projectSummary = activeProject?.summary ?? null
+  const sessionPlaceholder = activeProject?.focus
+    ? `e.g. ${activeProject.focus}`
+    : 'e.g. Refactor the synth sequencer'
 
   const isFormValid = sessionFocus.trim() && highlight.trim() && challenge.trim()
 
@@ -449,6 +521,9 @@ export function DashboardJournalRoute() {
     }
 
     setEntries((prev) => [newEntry, ...prev])
+    if (projectId) {
+      logProjectActivity(projectId)
+    }
     setSessionFocus('')
     setMood(moodOptions[0].value)
     setHighlight('')
@@ -461,11 +536,11 @@ export function DashboardJournalRoute() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
       <div className="space-y-1">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Vibe coding journal
+          Nightshift journal for {projectName}
         </h1>
         <p className="text-base text-muted-foreground sm:text-lg">
-          Log what fueled your latest Nightshift, celebrate the highlights, and note how to smooth
-          the next stretch.
+          Capture highlights, hurdles, and next moves so {projectName} keeps its momentum.
+          {projectSummary ? <> {projectSummary}</> : null}
         </p>
       </div>
 
@@ -474,7 +549,8 @@ export function DashboardJournalRoute() {
           <CardHeader className="space-y-3">
             <CardTitle>Log a new session</CardTitle>
             <CardDescription>
-              Capture the focus, mood, and takeaways while the vibe is still fresh.
+              Capture the focus, mood, and takeaways while the vibe is fresh—each entry keeps
+              {` ${projectName} aligned.`}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -483,7 +559,7 @@ export function DashboardJournalRoute() {
                 <Label htmlFor="session-focus">Session focus</Label>
                 <Input
                   id="session-focus"
-                  placeholder="e.g. Refactor the synth sequencer"
+                  placeholder={sessionPlaceholder}
                   value={sessionFocus}
                   onChange={(event) => setSessionFocus(event.target.value)}
                   required
@@ -673,6 +749,9 @@ export function DashboardJournalRoute() {
 }
 
 export function DashboardRitualsRoute() {
+  const { activeProject } = useProjects()
+  const projectName = activeProject?.name ?? 'your project'
+
   const rituals = [
     {
       title: 'Arrival ritual',
@@ -707,10 +786,11 @@ export function DashboardRitualsRoute() {
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-          Flow ritual library
+          Flow rituals for {projectName}
         </h1>
         <p className="text-base text-muted-foreground sm:text-lg">
-          Borrow these prompts to shape routines that keep your Nightshift grounded and energized.
+          Borrow these prompts to shape routines that keep this project grounded, energized, and
+          ready for every Nightshift.
         </p>
       </div>
       <Card className="border-muted/70 bg-card/80">
@@ -720,8 +800,8 @@ export function DashboardRitualsRoute() {
             Ritual foundations
           </CardTitle>
           <CardDescription>
-            Pair any ritual with your vibe journal entries so you can see which practices support
-            your best flow.
+            Pair any ritual with your vibe journal entries so {projectName} can see which practices
+            support its best flow.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
@@ -762,5 +842,7 @@ export function DashboardRitualsRoute() {
 }
 
 export function DashboardIndexRoute() {
-  return <Navigate to="/dashboard/journal" replace />
+  const { projectId } = useParams({ from: '/dashboard/$projectId' })
+
+  return <Navigate to="/dashboard/$projectId/journal" params={{ projectId }} replace />
 }
