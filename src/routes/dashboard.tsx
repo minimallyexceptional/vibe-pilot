@@ -2,6 +2,7 @@ import React from 'react'
 import { Link, Navigate, Outlet } from '@tanstack/react-router'
 import {
   ArrowRight,
+  Bot,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -34,6 +35,12 @@ import { cn, getInitials } from '@/lib/utils'
 const APP_NAME = 'Nightshift'
 
 const sidebarItems = [
+  {
+    label: 'Vibe Pilot',
+    description: 'Spin up an AI copilot for product design and strategy.',
+    to: '/dashboard/vibe-pilot',
+    icon: Bot,
+  },
   {
     label: 'Vibe Journal',
     description: 'Capture the highlights and hurdles from every session.',
