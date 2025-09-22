@@ -20,19 +20,21 @@ export type VibePilotCompletion = {
   isMock: boolean
 }
 
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY?.trim()
 const model = import.meta.env.VITE_OPENAI_MODEL?.trim() || DEFAULT_MODEL
+const completionsUrl = import.meta.env.VITE_VIBE_PILOT_COMPLETIONS_URL?.trim()
 
 export async function requestVibePilotCompletion({
   history,
   config,
+  signal,
 }: {
   history: VibePilotChatMessage[]
   config: VibePilotConfig
+  signal?: AbortSignal
 }): Promise<VibePilotCompletion> {
   const systemPrompt = buildSystemPrompt(config)
 
-  if (!apiKey) {
+  if (!completionsUrl) {
     return {
       content: buildMockResponse(history, config),
       isMock: true,
@@ -48,29 +50,43 @@ export async function requestVibePilotCompletion({
     ],
   }
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  })
+  let response: Response
+
+  try {
+    response = await fetch(completionsUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal,
+    })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw error
+    }
+
+    throw new Error('Unable to reach the Vibe Pilot completion service.')
+  }
 
   if (!response.ok) {
     const errorBody = await safeParseError(response)
-    throw new Error(errorBody ?? 'Unable to reach OpenAI at the moment.')
+    throw new Error(errorBody ?? 'The Vibe Pilot completion service responded with an error.')
   }
 
   const data = (await response.json()) as {
+    content?: string | null
     choices?: Array<{
       message?: { content?: string | null }
     }>
   }
-  const content = data.choices?.[0]?.message?.content?.trim()
+
+  const directContent = typeof data.content === 'string' ? data.content : null
+  const content = (directContent ?? data.choices?.[0]?.message?.content)?.trim()
 
   if (!content) {
-    throw new Error('OpenAI returned an empty response. Try again in a moment.')
+    throw new Error('The completion service returned an empty response. Try again in a moment.')
   }
 
   return {
@@ -90,7 +106,7 @@ async function safeParseError(response: Response) {
           : null
     return message
   } catch (error) {
-    console.error('Failed to parse OpenAI error payload', error)
+    console.error('Failed to parse completion error payload', error)
     return null
   }
 }
@@ -134,7 +150,7 @@ function buildMockResponse(history: VibePilotChatMessage[], config: VibePilotCon
       '- Define inputs, validation, and data requirements for each feature.',
       '- Capture success metrics so we know what “done” feels like.',
       '',
-      '_This is a preview response generated without a ChatGPT key. Set `VITE_OPENAI_API_KEY` to unlock live conversations._',
+      '_This is a preview response generated without a live completion proxy. Set `VITE_VIBE_PILOT_COMPLETIONS_URL` to unlock real conversations._',
     ].join('\n')
   }
 
@@ -149,6 +165,6 @@ function buildMockResponse(history: VibePilotChatMessage[], config: VibePilotCon
     '- Outline a monetization or pricing experiment tied to the audience you mentioned.',
     '- Identify data to track so we can decide if the idea sticks.',
     '',
-    '_This is a preview response generated without a ChatGPT key. Set `VITE_OPENAI_API_KEY` to unlock live conversations._',
+    '_This is a preview response generated without a live completion proxy. Set `VITE_VIBE_PILOT_COMPLETIONS_URL` to unlock real conversations._',
   ].join('\n')
 }

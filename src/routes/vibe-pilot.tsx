@@ -94,6 +94,7 @@ export function DashboardVibePilotRoute() {
 
   const messagesRef = React.useRef<ChatMessage[]>([])
   const endRef = React.useRef<HTMLDivElement | null>(null)
+  const kickoffRequestIdRef = React.useRef(0)
 
   React.useEffect(() => {
     messagesRef.current = messages
@@ -109,6 +110,9 @@ export function DashboardVibePilotRoute() {
     if (phase !== 'chat' || !sessionConfig || kickoffStatus !== 'idle') {
       return
     }
+
+    const requestId = kickoffRequestIdRef.current + 1
+    kickoffRequestIdRef.current = requestId
 
     setKickoffStatus('running')
     setError(null)
@@ -150,6 +154,10 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
 
     void requestVibePilotCompletion({ history, config: sessionConfig })
       .then((completion) => {
+        if (kickoffRequestIdRef.current !== requestId) {
+          return
+        }
+
         setMessages((prev) => [
           ...prev,
           {
@@ -161,6 +169,10 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
         ])
       })
       .catch((requestError) => {
+        if (kickoffRequestIdRef.current !== requestId) {
+          return
+        }
+
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -168,6 +180,10 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
         )
       })
       .finally(() => {
+        if (kickoffRequestIdRef.current !== requestId) {
+          return
+        }
+
         setIsGenerating(false)
         setKickoffStatus('done')
       })
@@ -211,6 +227,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
   }
 
   const handleStartOver = () => {
+    kickoffRequestIdRef.current += 1
     setPhase('intro')
     setStepIndex(0)
     setSessionConfig(null)
