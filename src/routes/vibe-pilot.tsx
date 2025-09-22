@@ -71,6 +71,10 @@ function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
 }
 
+function isAbortError(error: unknown): error is DOMException {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 function getModeLabel(mode: VibePilotMode) {
   return modeOptions.find((option) => option.value === mode)?.title ?? 'Mode'
 }
@@ -95,6 +99,20 @@ export function DashboardVibePilotRoute() {
   const messagesRef = React.useRef<ChatMessage[]>([])
   const endRef = React.useRef<HTMLDivElement | null>(null)
   const kickoffRequestIdRef = React.useRef(0)
+  const chatRequestIdRef = React.useRef(0)
+  const kickoffAbortControllerRef = React.useRef<AbortController | null>(null)
+  const chatAbortControllerRef = React.useRef<AbortController | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      kickoffRequestIdRef.current += 1
+      chatRequestIdRef.current += 1
+      kickoffAbortControllerRef.current?.abort()
+      chatAbortControllerRef.current?.abort()
+      kickoffAbortControllerRef.current = null
+      chatAbortControllerRef.current = null
+    }
+  }, [])
 
   React.useEffect(() => {
     messagesRef.current = messages
@@ -107,14 +125,17 @@ export function DashboardVibePilotRoute() {
   }, [messages, isGenerating])
 
   React.useEffect(() => {
-    if (phase !== 'chat' || !sessionConfig || kickoffStatus !== 'idle') {
+    if (phase !== 'chat' || !sessionConfig || kickoffStatus !== 'running') {
       return
     }
 
     const requestId = kickoffRequestIdRef.current + 1
     kickoffRequestIdRef.current = requestId
 
-    setKickoffStatus('running')
+    const abortController = new AbortController()
+    kickoffAbortControllerRef.current?.abort()
+    kickoffAbortControllerRef.current = abortController
+
     setError(null)
 
     const introContent =
@@ -152,7 +173,11 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
 
     setIsGenerating(true)
 
-    void requestVibePilotCompletion({ history, config: sessionConfig })
+    void requestVibePilotCompletion({
+      history,
+      config: sessionConfig,
+      signal: abortController.signal,
+    })
       .then((completion) => {
         if (kickoffRequestIdRef.current !== requestId) {
           return
@@ -173,6 +198,10 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
           return
         }
 
+        if (isAbortError(requestError)) {
+          return
+        }
+
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -186,7 +215,20 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
 
         setIsGenerating(false)
         setKickoffStatus('done')
+        if (kickoffAbortControllerRef.current === abortController) {
+          kickoffAbortControllerRef.current = null
+        }
       })
+    return () => {
+      if (kickoffRequestIdRef.current === requestId) {
+        kickoffRequestIdRef.current += 1
+      }
+
+      if (kickoffAbortControllerRef.current === abortController) {
+        kickoffAbortControllerRef.current.abort()
+        kickoffAbortControllerRef.current = null
+      }
+    }
   }, [phase, sessionConfig, kickoffStatus])
 
   const isLastStep = stepIndex === totalSteps - 1
@@ -202,7 +244,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
       }
       setSessionConfig(config)
       setPhase('chat')
-      setKickoffStatus('idle')
+      setKickoffStatus('running')
       setMessages([])
       setInputValue('')
       setError(null)
@@ -228,6 +270,11 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
 
   const handleStartOver = () => {
     kickoffRequestIdRef.current += 1
+    chatRequestIdRef.current += 1
+    kickoffAbortControllerRef.current?.abort()
+    chatAbortControllerRef.current?.abort()
+    kickoffAbortControllerRef.current = null
+    chatAbortControllerRef.current = null
     setPhase('intro')
     setStepIndex(0)
     setSessionConfig(null)
@@ -314,8 +361,24 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
       }),
     )
 
+    const requestId = chatRequestIdRef.current + 1
+    chatRequestIdRef.current = requestId
+
+    chatAbortControllerRef.current?.abort()
+    const abortController = new AbortController()
+    chatAbortControllerRef.current = abortController
+
     try {
-      const completion = await requestVibePilotCompletion({ history, config: sessionConfig })
+      const completion = await requestVibePilotCompletion({
+        history,
+        config: sessionConfig,
+        signal: abortController.signal,
+      })
+
+      if (chatRequestIdRef.current !== requestId) {
+        return
+      }
+
       const assistantMessage: ChatMessage = {
         id: createId('assistant'),
         role: 'assistant',
@@ -324,13 +387,22 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
       }
       setMessages((prev) => [...prev, assistantMessage])
     } catch (requestError) {
+      if (chatRequestIdRef.current !== requestId || isAbortError(requestError)) {
+        return
+      }
+
       setError(
         requestError instanceof Error
           ? requestError.message
           : 'Something went wrong while talking to Vibe Pilot.',
       )
     } finally {
-      setIsGenerating(false)
+      if (chatRequestIdRef.current === requestId) {
+        if (chatAbortControllerRef.current === abortController) {
+          chatAbortControllerRef.current = null
+        }
+        setIsGenerating(false)
+      }
     }
   }
 
