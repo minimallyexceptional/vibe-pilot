@@ -14,6 +14,7 @@ import { HomeRoute } from './routes/index'
 import { LoginRoute } from './routes/login'
 import { PricingRoute } from './routes/pricing'
 import { SignUpRoute } from './routes/sign-up'
+import { ProjectsRoute } from './routes/projects'
 
 const rootRoute = new RootRoute({
   component: () => (
@@ -57,35 +58,47 @@ const signUpRoute = new Route({
 const dashboardRoute = new Route({
   getParentRoute: () => rootRoute,
   path: 'dashboard',
+  component: () => <Outlet />,
+})
+
+const dashboardProjectsRoute = new Route({
+  getParentRoute: () => dashboardRoute,
+  path: '/',
+  component: ProjectsRoute,
+})
+
+const dashboardProjectLayoutRoute = new Route({
+  getParentRoute: () => dashboardRoute,
+  path: '$projectId',
   component: DashboardLayout,
 })
 
-const dashboardVibePilotRoute = new Route({
-  getParentRoute: () => dashboardRoute,
-  path: 'vibe-pilot',
-  component: DashboardVibePilotRoute,
-})
-
-const dashboardIndexRoute = new Route({
-  getParentRoute: () => dashboardRoute,
+const dashboardProjectIndexRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
   path: '/',
   component: DashboardIndexRoute,
 })
 
-const dashboardJournalRoute = new Route({
-  getParentRoute: () => dashboardRoute,
+const dashboardProjectVibePilotRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
+  path: 'vibe-pilot',
+  component: DashboardVibePilotRoute,
+})
+
+const dashboardProjectJournalRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
   path: 'journal',
   component: DashboardJournalRoute,
 })
 
-const dashboardRitualsRoute = new Route({
-  getParentRoute: () => dashboardRoute,
+const dashboardProjectRitualsRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
   path: 'rituals',
   component: DashboardRitualsRoute,
 })
 
-const dashboardAccountRoute = new Route({
-  getParentRoute: () => dashboardRoute,
+const dashboardProjectAccountRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
   path: 'account',
   component: AccountManagementRoute,
 })
@@ -93,11 +106,14 @@ const dashboardAccountRoute = new Route({
 const routeTree = rootRoute.addChildren([
   marketingRoute.addChildren([homeRoute, pricingRoute, loginRoute, signUpRoute]),
   dashboardRoute.addChildren([
-    dashboardVibePilotRoute,
-    dashboardIndexRoute,
-    dashboardJournalRoute,
-    dashboardRitualsRoute,
-    dashboardAccountRoute,
+    dashboardProjectsRoute,
+    dashboardProjectLayoutRoute.addChildren([
+      dashboardProjectIndexRoute,
+      dashboardProjectVibePilotRoute,
+      dashboardProjectJournalRoute,
+      dashboardProjectRitualsRoute,
+      dashboardProjectAccountRoute,
+    ]),
   ]),
 ])
 

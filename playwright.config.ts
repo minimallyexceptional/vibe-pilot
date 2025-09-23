@@ -18,7 +18,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: `VITE_E2E=true npm run dev -- --host 0.0.0.0 --port ${PORT}`,
+    command: `VITE_E2E=true npm run dev:client -- --host 0.0.0.0 --port ${PORT}`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !CI,
     stdout: 'pipe',

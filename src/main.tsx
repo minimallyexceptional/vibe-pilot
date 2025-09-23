@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 import { ThemeProvider } from '@/components/theme-provider'
 import { AppClerkProvider } from '@/lib/clerk'
+import { ProjectsProvider } from '@/lib/projects'
 
 import { AppRouter } from './router'
 import './styles.css'
@@ -16,7 +17,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <AppClerkProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AppRouter />
+          <ProjectsProvider>
+            <AppRouter />
+          </ProjectsProvider>
         </ThemeProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
