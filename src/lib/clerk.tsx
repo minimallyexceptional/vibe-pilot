@@ -27,7 +27,9 @@ export const isClerkConfigured = Boolean(publishableKey && !placeholderPattern.t
 export const clerkMissingKeyMessage =
   'Clerk authentication is not configured. Set VITE_CLERK_PUBLISHABLE_KEY to a valid key to enable sign in.'
 
-const isE2ETestMode = !isClerkConfigured && (e2eFlag === 'true' || e2eFlag === '1')
+const isE2ETestMode = e2eFlag === 'true' || e2eFlag === '1'
+console.log('clerk env', { publishableKey, e2eFlag, isE2ETestMode })
+const shouldUseRealClerk = isClerkConfigured && !isE2ETestMode
 const TEST_VERIFICATION_CODE = '424242'
 
 type TestUserRecord = {
@@ -482,7 +484,17 @@ const mockUserValue = {
 } as unknown as UseUserHookReturn
 
 export function AppClerkProvider({ children }: ChildrenProps) {
-  if (isClerkConfigured && publishableKey) {
+  if (isE2ETestMode) {
+    if (isClerkConfigured) {
+      console.warn(
+        'VITE_E2E is enabled. Using the in-memory Clerk test harness instead of the configured Clerk instance.',
+      )
+    }
+
+    return <TestClerkProvider>{children}</TestClerkProvider>
+  }
+
+  if (shouldUseRealClerk && publishableKey) {
     return (
       <RealClerkProvider
         publishableKey={publishableKey}
@@ -491,10 +503,6 @@ export function AppClerkProvider({ children }: ChildrenProps) {
         {children}
       </RealClerkProvider>
     )
-  }
-
-  if (isE2ETestMode) {
-    return <TestClerkProvider>{children}</TestClerkProvider>
   }
 
   if (!publishableKey) {
@@ -510,42 +518,42 @@ export function AppClerkProvider({ children }: ChildrenProps) {
   return <MockClerkProvider>{children}</MockClerkProvider>
 }
 
-export const ClerkLoaded = isClerkConfigured
-  ? RealClerkLoaded
-  : isE2ETestMode
-    ? TestClerkLoaded
+export const ClerkLoaded = isE2ETestMode
+  ? TestClerkLoaded
+  : shouldUseRealClerk
+    ? RealClerkLoaded
     : MockClerkLoaded
-export const ClerkLoading = isClerkConfigured
-  ? RealClerkLoading
-  : isE2ETestMode
-    ? TestClerkLoading
+export const ClerkLoading = isE2ETestMode
+  ? TestClerkLoading
+  : shouldUseRealClerk
+    ? RealClerkLoading
     : MockClerkLoading
-export const SignedIn = isClerkConfigured
-  ? RealSignedIn
-  : isE2ETestMode
-    ? TestSignedIn
+export const SignedIn = isE2ETestMode
+  ? TestSignedIn
+  : shouldUseRealClerk
+    ? RealSignedIn
     : MockSignedIn
-export const SignedOut = isClerkConfigured
-  ? RealSignedOut
-  : isE2ETestMode
-    ? TestSignedOut
+export const SignedOut = isE2ETestMode
+  ? TestSignedOut
+  : shouldUseRealClerk
+    ? RealSignedOut
     : MockSignedOut
-export const UserButton = isClerkConfigured
-  ? RealUserButton
-  : isE2ETestMode
-    ? TestUserButton
+export const UserButton = isE2ETestMode
+  ? TestUserButton
+  : shouldUseRealClerk
+    ? RealUserButton
     : MockUserButton
-export const useSignIn = isClerkConfigured
-  ? realUseSignIn
-  : isE2ETestMode
-    ? useE2ESignIn
+export const useSignIn = isE2ETestMode
+  ? useE2ESignIn
+  : shouldUseRealClerk
+    ? realUseSignIn
     : useMockSignIn
-export const useSignUp = isClerkConfigured
-  ? realUseSignUp
-  : isE2ETestMode
-    ? useE2ESignUp
+export const useSignUp = isE2ETestMode
+  ? useE2ESignUp
+  : shouldUseRealClerk
+    ? realUseSignUp
     : useMockSignUp
-export const useUser = isClerkConfigured ? realUseUser : isE2ETestMode ? useE2EUser : useMockUser
+export const useUser = isE2ETestMode ? useE2EUser : shouldUseRealClerk ? realUseUser : useMockUser
 
 export function getClerkErrorMessage(error: unknown): string | null {
   if (typeof error === 'object' && error !== null && 'errors' in error) {

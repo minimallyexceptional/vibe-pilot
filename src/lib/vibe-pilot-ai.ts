@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = 'gpt-4o-mini'
+const DEFAULT_MODEL = 'gpt-4o'
 
 export type VibePilotMode = 'design' | 'collaboration'
 
@@ -21,7 +21,9 @@ export type VibePilotCompletion = {
 }
 
 const model = import.meta.env.VITE_OPENAI_MODEL?.trim() || DEFAULT_MODEL
-const completionsUrl = import.meta.env.VITE_VIBE_PILOT_COMPLETIONS_URL?.trim()
+const completionsUrl =
+  import.meta.env.VITE_VIBE_PILOT_COMPLETIONS_URL?.trim() ||
+  (import.meta.env.DEV ? 'http://localhost:8787/v1/chat/completions' : undefined)
 
 export async function requestVibePilotCompletion({
   history,
@@ -112,16 +114,37 @@ async function safeParseError(response: Response) {
 }
 
 function buildSystemPrompt(config: VibePilotConfig) {
+  const projectName = config.projectName.trim() || 'Unnamed project'
   const audience = config.audience.trim() || 'a broad product team audience'
   const tone = config.tone.trim() || 'encouraging and pragmatic'
+  const focusDetails = config.focusDetails.trim() || '(No kickoff details provided yet.)'
+  const modeLabel = config.mode === 'design' ? 'design blueprint' : 'strategy partner'
 
-  const sharedIntro = `You are Vibe Pilot, an embedded AI copilot inside a product team's productivity dashboard. Speak with a ${tone} voice that feels collaborative, concise, and energizing. Reference the project name “${config.projectName}” when helpful. Always organize suggestions into clear sections, bullet lists, and next steps so the team can act immediately. Assume the primary audience is ${audience}.`
+  const modeSpecificRules =
+    config.mode === 'design'
+      ? `6. For design mode, expand feature ideas into UX flows, UI states, validation, edge cases, data or schema needs, success metrics, and assumptions to confirm.
+7. Surface user journeys and state transitions; call out testing hooks and handoff-ready artifacts.`
+      : `6. For collaboration mode, map growth experiments, monetization angles, channel plays, risks, dependencies, and measurable signals.
+7. Balance quick wins and longer bets; highlight retention, activation, and engagement loops.`
 
-  if (config.mode === 'design') {
-    return `${sharedIntro} Your main objective is to transform raw feature ideas into a detailed design document. Expand on feature descriptions, outline user journeys, call out UX states, edge cases, validation, and success metrics. Ask follow-up questions whenever you need clarification before committing to a plan. Make sure every recommendation is grounded in the provided focus details: ${config.focusDetails}`
-  }
+  return `You are Vibe Pilot, an embedded AI copilot inside a product team's productivity dashboard.
 
-  return `${sharedIntro} Your main objective is to behave like a collaborative product strategist. Help the user explore new features, growth opportunities, and monetization strategies. Tie every suggestion back to activation, engagement, and retention loops. Highlight potential risks, dependencies, and measurable experiments. Use the provided focus details as your starting point: ${config.focusDetails}`
+Project: "${projectName}"
+Mode: ${modeLabel}
+Audience: ${audience}
+Tone: ${tone}
+Focus Details:
+${focusDetails}
+
+Follow these rules:
+1. Stay collaborative, concise, and energizing; reference the project name when helpful.
+2. Use structured Markdown: short intro sentence, clear section headings, tight bullet lists (maximum six items each).
+3. Ground every recommendation in the focus details and the latest user message; show continuity with prior dialogue.
+4. Ask one clarifying question when needed, prefixed with "Need From You:".
+5. Close every reply with a "Next Moves" section listing two to four prioritized actions with owners or time horizons when possible.
+${modeSpecificRules}
+8. Surface risks, tradeoffs, and open questions inline; cite success metrics and validation ideas.
+9. Be transparent about limitations—never claim access to tools or data you do not have.`
 }
 
 function buildMockResponse(history: VibePilotChatMessage[], config: VibePilotConfig) {
