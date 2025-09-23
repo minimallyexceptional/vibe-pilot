@@ -145,7 +145,6 @@ export function DashboardVibePilotRoute() {
   const chatRequestIdRef = React.useRef(0)
   const kickoffAbortControllerRef = React.useRef<AbortController | null>(null)
   const chatAbortControllerRef = React.useRef<AbortController | null>(null)
-  const previousProjectIdRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     return () => {
@@ -339,18 +338,6 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     setHasEditedFocusDetails(false)
   }, [])
 
-  React.useEffect(() => {
-    if (!projectId) {
-      return
-    }
-
-    if (previousProjectIdRef.current && previousProjectIdRef.current !== projectId) {
-      handleStartOver()
-    }
-
-    previousProjectIdRef.current = projectId
-  }, [projectId, handleStartOver])
-
   const canProceed = React.useMemo(() => {
     if (stepIndex === 0) {
       return Boolean(mode)
@@ -468,7 +455,10 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+    <div
+      key={projectId ?? 'vibe-pilot-default'}
+      className="mx-auto flex w-full max-w-5xl flex-col gap-8"
+    >
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Badge variant="outline" className="border-primary/60 text-primary">
