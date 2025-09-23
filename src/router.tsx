@@ -8,6 +8,7 @@ import {
   DashboardRitualsRoute,
 } from './routes/dashboard'
 import { DashboardVibePilotRoute } from './routes/vibe-pilot'
+import { DashboardDesignDocRoute } from './routes/design-doc'
 import { AccountManagementRoute } from './routes/account'
 import { MarketingLayout } from './routes/marketing-layout'
 import { HomeRoute } from './routes/index'
@@ -85,6 +86,12 @@ const dashboardProjectVibePilotRoute = new Route({
   component: DashboardVibePilotRoute,
 })
 
+const dashboardProjectDesignDocRoute = new Route({
+  getParentRoute: () => dashboardProjectLayoutRoute,
+  path: 'design-doc',
+  component: DashboardDesignDocRoute,
+})
+
 const dashboardProjectJournalRoute = new Route({
   getParentRoute: () => dashboardProjectLayoutRoute,
   path: 'journal',
@@ -110,6 +117,7 @@ const routeTree = rootRoute.addChildren([
     dashboardProjectLayoutRoute.addChildren([
       dashboardProjectIndexRoute,
       dashboardProjectVibePilotRoute,
+      dashboardProjectDesignDocRoute,
       dashboardProjectJournalRoute,
       dashboardProjectRitualsRoute,
       dashboardProjectAccountRoute,
