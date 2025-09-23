@@ -86,10 +86,10 @@ function createId(prefix: string) {
 
 function createMarkdownAst(markdown: string): MarkdownAst | null {
   try {
-    const file = markdownProcessor.processSync(markdown)
-    const result = (file.result ?? file.value) as MarkdownAst | string | undefined
+    const tree = markdownProcessor.parse(markdown)
+    const result = markdownProcessor.runSync(tree) as MarkdownAst | undefined
 
-    if (result && typeof result !== 'string') {
+    if (result && typeof result === 'object' && 'type' in result) {
       return result
     }
 
@@ -713,13 +713,7 @@ function MarkdownToolbar({ onCommand }: { onCommand: (command: ToolbarCommand) =
   )
 }
 
-function DesignDocDocumentPanel({
-  className,
-  layout = 'split',
-}: {
-  className?: string
-  layout?: 'split' | 'stack'
-}) {
+function DesignDocDocumentPanel({ className }: { className?: string }) {
   const { document, updateDocument, lastSavedAt } = useDesignDocWorkspace()
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
   const pendingSelectionRef = React.useRef<{ start: number; end: number } | null>(null)
@@ -772,6 +766,19 @@ function DesignDocDocumentPanel({
     return lastSavedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }, [lastSavedAt])
 
+  const [activeView, setActiveView] = React.useState<'preview' | 'editor'>('preview')
+  const baseId = React.useId()
+  const previewTabId = `${baseId}-preview-tab`
+  const previewPanelId = `${baseId}-preview-panel`
+  const editorTabId = `${baseId}-editor-tab`
+  const editorPanelId = `${baseId}-editor-panel`
+
+  React.useEffect(() => {
+    if (activeView === 'editor' && textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [activeView])
+
   return (
     <Card className={cn('flex h-full flex-col', className)}>
       <CardHeader className="space-y-3">
@@ -791,15 +798,64 @@ function DesignDocDocumentPanel({
           <span>Saved {savedLabel}</span>
         </div>
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-        <MarkdownToolbar onCommand={handleCommand} />
+      <CardContent className="flex flex-1 flex-col overflow-hidden">
         <div
+          role="tablist"
+          aria-label="Document view"
+          className="grid w-full grid-cols-2 rounded-lg border bg-muted/40 p-1 text-muted-foreground"
+        >
+          <button
+            type="button"
+            role="tab"
+            id={previewTabId}
+            aria-selected={activeView === 'preview'}
+            aria-controls={previewPanelId}
+            onClick={() => setActiveView('preview')}
+            className={cn(
+              'inline-flex h-8 w-full items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+              activeView === 'preview'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id={editorTabId}
+            aria-selected={activeView === 'editor'}
+            aria-controls={editorPanelId}
+            onClick={() => setActiveView('editor')}
+            className={cn(
+              'inline-flex h-8 w-full items-center justify-center rounded-md px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+              activeView === 'editor'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            Editor
+          </button>
+        </div>
+        <div
+          role="tabpanel"
+          id={previewPanelId}
+          aria-labelledby={previewTabId}
           className={cn(
-            'flex flex-1 flex-col gap-4',
-            layout === 'split' ? 'md:grid md:grid-cols-2 md:gap-4' : '',
+            'mt-4 flex-1 flex-col overflow-hidden',
+            activeView === 'preview' ? 'flex' : 'hidden',
           )}
         >
-          <div className="flex min-h-[260px] flex-col">
+          <MarkdownPreview markdown={document} />
+        </div>
+        <div
+          role="tabpanel"
+          id={editorPanelId}
+          aria-labelledby={editorTabId}
+          className={cn('mt-4 flex-1 flex-col gap-4', activeView === 'editor' ? 'flex' : 'hidden')}
+        >
+          <MarkdownToolbar onCommand={handleCommand} />
+          <div className="flex min-h-[260px] flex-1 flex-col">
             <textarea
               ref={textareaRef}
               value={document}
@@ -807,9 +863,6 @@ function DesignDocDocumentPanel({
               className="h-full min-h-[260px] flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               placeholder="Start outlining your architecture, flows, and decisions…"
             />
-          </div>
-          <div className={cn('flex min-h-[260px] flex-col', layout === 'split' ? 'md:mt-0' : '')}>
-            <MarkdownPreview markdown={document} />
           </div>
         </div>
       </CardContent>
@@ -846,7 +899,7 @@ function MobileTabs() {
         {activeTab === 'chat' ? (
           <DesignDocChatPanel className="min-h-[420px]" />
         ) : (
-          <DesignDocDocumentPanel className="min-h-[420px]" layout="stack" />
+          <DesignDocDocumentPanel className="min-h-[420px]" />
         )}
       </div>
     </div>
