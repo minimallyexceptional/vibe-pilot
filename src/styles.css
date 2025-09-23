@@ -74,3 +74,70 @@
     @apply min-h-screen bg-background font-sans text-base text-foreground antialiased;
   }
 }
+
+@layer components {
+  .markdown-surface {
+    @apply space-y-4 text-sm leading-relaxed text-foreground sm:text-base;
+  }
+
+  .markdown-surface h1 {
+    @apply text-3xl font-semibold tracking-tight sm:text-4xl;
+  }
+
+  .markdown-surface h2 {
+    @apply text-2xl font-semibold tracking-tight text-foreground;
+  }
+
+  .markdown-surface h3 {
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  .markdown-surface p {
+    @apply text-foreground/90;
+  }
+
+  .markdown-surface ul {
+    @apply list-disc space-y-2 pl-5;
+  }
+
+  .markdown-surface ol {
+    @apply list-decimal space-y-2 pl-5;
+  }
+
+  .markdown-surface li {
+    @apply text-foreground/90;
+  }
+
+  .markdown-surface table {
+    @apply w-full table-auto border-collapse overflow-hidden rounded-lg border border-border text-sm shadow-sm;
+  }
+
+  .markdown-surface thead tr {
+    @apply bg-muted/70 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+
+  .markdown-surface th,
+  .markdown-surface td {
+    @apply border border-border px-3 py-2 align-top;
+  }
+
+  .markdown-surface pre {
+    @apply overflow-x-auto rounded-lg bg-slate-950/95 p-4 text-sm leading-relaxed text-slate-100 shadow-inner;
+  }
+
+  .markdown-surface code {
+    @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground;
+  }
+
+  .markdown-surface pre code {
+    @apply bg-transparent p-0 text-xs leading-relaxed;
+  }
+
+  .markdown-surface blockquote {
+    @apply border-l-4 border-primary/40 bg-primary/10 p-4 italic text-foreground/80;
+  }
+
+  .markdown-preview-container {
+    @apply overflow-y-auto;
+  }
+}

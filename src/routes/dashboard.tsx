@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
+  FileText,
   ListChecks,
   LogIn,
   Menu,
@@ -37,6 +38,12 @@ import { cn, getInitials } from '@/lib/utils'
 const APP_NAME = 'Nightshift'
 
 const sidebarItems = [
+  {
+    label: 'Design Doc Studio',
+    description: 'Guide product ideas into structured specs ready for handoff.',
+    to: '/dashboard/$projectId/design-doc',
+    icon: FileText,
+  },
   {
     label: 'Vibe Pilot',
     description: 'Spin up an AI copilot for product design and strategy.',
