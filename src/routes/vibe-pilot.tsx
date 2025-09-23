@@ -145,6 +145,7 @@ export function DashboardVibePilotRoute() {
   const chatRequestIdRef = React.useRef(0)
   const kickoffAbortControllerRef = React.useRef<AbortController | null>(null)
   const chatAbortControllerRef = React.useRef<AbortController | null>(null)
+  const previousProjectIdRef = React.useRef<string | null>(null)
 
   React.useEffect(() => {
     return () => {
@@ -314,7 +315,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     setStepIndex(0)
   }
 
-  const handleStartOver = () => {
+  const handleStartOver = React.useCallback(() => {
     kickoffRequestIdRef.current += 1
     chatRequestIdRef.current += 1
     kickoffAbortControllerRef.current?.abort()
@@ -336,7 +337,19 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     setTone(toneOptions[0].value)
     setHasEditedProjectName(false)
     setHasEditedFocusDetails(false)
-  }
+  }, [])
+
+  React.useEffect(() => {
+    if (!projectId) {
+      return
+    }
+
+    if (previousProjectIdRef.current && previousProjectIdRef.current !== projectId) {
+      handleStartOver()
+    }
+
+    previousProjectIdRef.current = projectId
+  }, [projectId, handleStartOver])
 
   const canProceed = React.useMemo(() => {
     if (stepIndex === 0) {

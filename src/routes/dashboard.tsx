@@ -211,6 +211,10 @@ const initialJournalEntries: JournalEntry[] = [
   },
 ]
 
+function createInitialJournalEntries(): JournalEntry[] {
+  return initialJournalEntries.map((entry) => ({ ...entry }))
+}
+
 export function DashboardLayout() {
   const { projectId } = useParams({ from: '/dashboard/$projectId' })
   const { projects, activeProject, selectProject } = useProjects()
@@ -460,7 +464,12 @@ export function DashboardLayout() {
 }
 
 export function DashboardJournalRoute() {
-  const [entries, setEntries] = React.useState<JournalEntry[]>(initialJournalEntries)
+  const { projectId } = useParams({ from: '/dashboard/$projectId/journal' })
+  const [entriesByProject, setEntriesByProject] = React.useState<Record<string, JournalEntry[]>>(
+    () => ({
+      [projectId]: createInitialJournalEntries(),
+    }),
+  )
   const [sessionFocus, setSessionFocus] = React.useState('')
   const [mood, setMood] = React.useState<MoodValue>(moodOptions[0].value)
   const [highlight, setHighlight] = React.useState('')
@@ -468,7 +477,31 @@ export function DashboardJournalRoute() {
   const [soundtrack, setSoundtrack] = React.useState('')
   const [nextFocus, setNextFocus] = React.useState('')
 
-  const { projectId } = useParams({ from: '/dashboard/$projectId/journal' })
+  React.useEffect(() => {
+    setEntriesByProject((prev) => {
+      if (prev[projectId]) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        [projectId]: [],
+      }
+    })
+
+    setSessionFocus('')
+    setMood(moodOptions[0].value)
+    setHighlight('')
+    setChallenge('')
+    setSoundtrack('')
+    setNextFocus('')
+  }, [projectId])
+
+  const entries = React.useMemo(
+    () => entriesByProject[projectId] ?? [],
+    [entriesByProject, projectId],
+  )
+
   const { activeProject, logProjectActivity } = useProjects()
   const projectName = activeProject?.name ?? 'this project'
   const projectSummary = activeProject?.summary ?? null
@@ -520,10 +553,15 @@ export function DashboardJournalRoute() {
       nextFocus: nextFocus.trim() || undefined,
     }
 
-    setEntries((prev) => [newEntry, ...prev])
-    if (projectId) {
-      logProjectActivity(projectId)
-    }
+    setEntriesByProject((prev) => {
+      const currentEntries = prev[projectId] ?? []
+
+      return {
+        ...prev,
+        [projectId]: [newEntry, ...currentEntries],
+      }
+    })
+    logProjectActivity(projectId)
     setSessionFocus('')
     setMood(moodOptions[0].value)
     setHighlight('')
