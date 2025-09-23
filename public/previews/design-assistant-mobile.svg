@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1400" viewBox="0 0 900 1400">
+  <defs>
+    <linearGradient id="mobile-bg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#f6f8ff" />
+      <stop offset="100%" stop-color="#e9edff" />
+    </linearGradient>
+  </defs>
+  <rect width="900" height="1400" fill="url(#mobile-bg)" rx="60" />
+  <rect x="140" y="160" width="620" height="1080" rx="46" fill="#ffffff" stroke="#dce2ff" stroke-width="3" />
+  <rect x="180" y="210" width="540" height="200" rx="28" fill="#f5f7ff" />
+  <text x="210" y="260" font-family="'Inter', sans-serif" font-size="30" font-weight="600" fill="#253165">Mobile workflow</text>
+  <text x="210" y="302" font-family="'Inter', sans-serif" font-size="20" fill="#5d6b99">Tap between Chat and Document tabs on small screens.</text>
+  <rect x="200" y="360" width="500" height="70" rx="22" fill="#edf0ff" stroke="#d1d8ff" />
+  <rect x="205" y="365" width="245" height="60" rx="20" fill="#3f6df6" />
+  <text x="260" y="405" font-family="'Inter', sans-serif" font-size="22" font-weight="600" fill="#ffffff">Chat</text>
+  <text x="470" y="405" font-family="'Inter', sans-serif" font-size="22" font-weight="600" fill="#6c75a7">Document</text>
+  <rect x="200" y="450" width="500" height="220" rx="28" fill="#ffffff" stroke="#dbe2ff" />
+  <text x="230" y="500" font-family="'Inter', sans-serif" font-size="18" font-weight="600" fill="#3f6df6">Assistant prompt</text>
+  <text x="230" y="540" font-family="'Inter', sans-serif" font-size="20" fill="#2f3b63">Who will benefit the most from Pulseboard?</text>
+  <rect x="200" y="700" width="500" height="220" rx="28" fill="#ffffff" stroke="#dbe2ff" />
+  <text x="230" y="748" font-family="'Inter', sans-serif" font-size="18" font-weight="600" fill="#7a82b6">Your answer</text>
+  <text x="230" y="788" font-family="'Inter', sans-serif" font-size="20" fill="#2f3b63">Product managers, engineering leads, and design partners working async across timezones.</text>
+  <rect x="220" y="950" width="460" height="90" rx="25" fill="#3f6df6" />
+  <text x="300" y="1008" font-family="'Inter', sans-serif" font-size="24" font-weight="600" fill="#ffffff">Submit</text>
+  <rect x="200" y="1080" width="500" height="230" rx="28" fill="#f8f9ff" stroke="#dbe2ff" stroke-dasharray="12 10" />
+  <text x="230" y="1130" font-family="'Inter', sans-serif" font-size="18" font-weight="600" fill="#253165">Document preview</text>
+  <text x="230" y="1172" font-family="'Source Code Pro', monospace" font-size="18" fill="#2f3b63">## Target Audience</text>
+  <text x="230" y="1210" font-family="'Source Code Pro', monospace" font-size="18" fill="#5a6898">- Product managers</text>
+  <text x="230" y="1240" font-family="'Source Code Pro', monospace" font-size="18" fill="#5a6898">- Engineering leads</text>
+  <text x="230" y="1270" font-family="'Source Code Pro', monospace" font-size="18" fill="#5a6898">- Design partners</text>
+</svg>
