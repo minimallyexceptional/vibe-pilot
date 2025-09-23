@@ -34,7 +34,7 @@ import {
   type DesignDocPlan,
   type DesignDocSectionKey,
   type MarkdownAst,
-} from '@/lib/design-doc-assistant'
+} from '@/services/designDocAssistant'
 import { cn } from '@/lib/utils'
 
 const markdownProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkRehype)
