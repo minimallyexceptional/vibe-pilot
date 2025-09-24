@@ -124,4 +124,84 @@ describe('DesignDocumentService', () => {
     expect(state.hasUserInteracted).toBe(false)
     expect(state.messages.length).toBeGreaterThan(0)
   })
+
+  it('ignores pending completion results after a reset', async () => {
+    let resolveCompletion: ((value: { content: string; isMock: boolean }) => void) | undefined
+    const request = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ content: string; isMock: boolean }>((resolve) => {
+          resolveCompletion = resolve
+        }),
+    )
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      requestCompletion: request,
+    })
+
+    const pending = service.sendMessage('Capture the main flows')
+
+    service.reset()
+
+    if (!resolveCompletion) {
+      throw new Error('Expected completion resolver to be defined')
+    }
+
+    resolveCompletion({
+      content: 'Chat:\nAll set.\n\nDocument:\n# Should not appear',
+      isMock: false,
+    })
+
+    await pending
+
+    const state = service.getState()
+
+    expect(state.document).toBe('')
+    expect(state.messages).toHaveLength(1)
+    expect(state.messages[0]?.id).toBe('seed')
+    expect(state.isGenerating).toBe(false)
+    expect(state.hasUserInteracted).toBe(false)
+  })
+
+  it('preserves finalized state when later completions resolve', async () => {
+    let resolveCompletion: ((value: { content: string; isMock: boolean }) => void) | undefined
+    const request = vi.fn().mockImplementation(
+      () =>
+        new Promise<{ content: string; isMock: boolean }>((resolve) => {
+          resolveCompletion = resolve
+        }),
+    )
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      initialDocument: '# Draft',
+      requestCompletion: request,
+    })
+
+    const pending = service.sendMessage('Please finalize the plan')
+
+    service.finalize('2024-05-01T12:00:00.000Z')
+
+    if (!resolveCompletion) {
+      throw new Error('Expected completion resolver to be defined')
+    }
+
+    resolveCompletion({
+      content: 'Chat:\nDone!\n\nDocument:\n# Replacement draft',
+      isMock: false,
+    })
+
+    await pending
+
+    const state = service.getState()
+
+    expect(state.status).toBe('complete')
+    expect(state.lastSavedAt).toBe('2024-05-01T12:00:00.000Z')
+    expect(state.document).toBe('# Draft')
+    expect(
+      state.messages.filter((message) => message.role === 'assistant' && message.id !== 'seed')
+        .length,
+    ).toBe(0)
+    expect(state.isGenerating).toBe(false)
+  })
 })

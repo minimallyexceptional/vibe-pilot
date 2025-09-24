@@ -57,6 +57,7 @@ export class DesignDocumentService {
   private readonly requestCompletion: RequestCompletion
   private readonly listeners = new Set<(state: DesignDocumentServiceState) => void>()
   private state: DesignDocumentServiceState
+  private activeRequestId: string | null = null
 
   constructor(options: DesignDocumentServiceOptions) {
     this.projectName = options.projectName.trim() || 'Untitled project'
@@ -99,6 +100,9 @@ export class DesignDocumentService {
       throw new Error('A response is already being generated.')
     }
 
+    const requestId = createId('completion')
+    this.activeRequestId = requestId
+
     const userMessage: DesignDocumentMessage = {
       id: createId('user'),
       role: 'user',
@@ -125,6 +129,10 @@ export class DesignDocumentService {
       const completion = await this.requestCompletion(payload)
       const parsed = parseAssistantResponse(completion.content)
 
+      if (this.activeRequestId !== requestId) {
+        return
+      }
+
       const assistantMessage: DesignDocumentMessage = {
         id: createId('assistant'),
         role: 'assistant',
@@ -136,13 +144,17 @@ export class DesignDocumentService {
         ? normalizeDocument(parsed.document)
         : this.state.document
 
+      this.activeRequestId = null
       this.updateState({
         messages: nextMessages,
         document: nextDocument,
         isGenerating: false,
       })
     } catch (error) {
-      this.updateState({ isGenerating: false })
+      if (this.activeRequestId === requestId) {
+        this.activeRequestId = null
+        this.updateState({ isGenerating: false })
+      }
       if (error instanceof DOMException && error.name === 'AbortError') {
         throw error
       }
@@ -164,10 +176,12 @@ export class DesignDocumentService {
   }
 
   finalize(timestamp: string) {
-    this.updateState({ status: 'complete', lastSavedAt: timestamp })
+    this.activeRequestId = null
+    this.updateState({ status: 'complete', lastSavedAt: timestamp, isGenerating: false })
   }
 
   reset() {
+    this.activeRequestId = null
     this.state = {
       messages: [createSeedMessage(this.projectName)],
       document: '',
