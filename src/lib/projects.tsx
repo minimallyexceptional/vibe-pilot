@@ -1,5 +1,7 @@
 import React from 'react'
 
+import type { VibePilotConfig } from './vibe-pilot-ai'
+
 export type Project = {
   id: string
   name: string
@@ -9,12 +11,28 @@ export type Project = {
   createdAt: string
   updatedAt: string
   lastOpenedAt: string
+  designDocument: ProjectDesignDocument | null
 }
 
 export type CreateProjectInput = {
   name: string
   summary?: string
   focus: string
+}
+
+export type ProjectDesignDocumentStatus = 'draft' | 'complete'
+
+export type ProjectDesignDocument = {
+  content: string
+  status: ProjectDesignDocumentStatus
+  lastSavedAt: string
+  config: VibePilotConfig
+}
+
+export type SaveDesignDocumentInput = {
+  content: string
+  status?: ProjectDesignDocumentStatus
+  config: VibePilotConfig
 }
 
 type ProjectsContextValue = {
@@ -24,6 +42,11 @@ type ProjectsContextValue = {
   createProject: (input: CreateProjectInput) => Project
   selectProject: (projectId: string) => Project | null
   logProjectActivity: (projectId: string) => void
+  saveDesignDocument: (
+    projectId: string,
+    input: SaveDesignDocumentInput,
+  ) => ProjectDesignDocument | null
+  clearDesignDocument: (projectId: string) => void
 }
 
 const PROJECTS_STORAGE_KEY = 'nightshift.projects'
@@ -69,7 +92,9 @@ function safeLoadProjects(): Project[] {
         return defaultProjects
       }
 
-      const project = item as Partial<Project>
+      const project = item as Partial<Project> & {
+        designDocument?: unknown
+      }
 
       if (
         typeof project.summary !== 'string' ||
@@ -82,7 +107,65 @@ function safeLoadProjects(): Project[] {
         return defaultProjects
       }
 
-      projects.push(project as Project)
+      let designDocument: ProjectDesignDocument | null = null
+
+      if (project.designDocument && typeof project.designDocument === 'object') {
+        const candidate = project.designDocument as Partial<ProjectDesignDocument> & {
+          config?: Partial<VibePilotConfig>
+        }
+
+        const status = candidate.status
+
+        const configCandidate: Partial<VibePilotConfig> = candidate.config ?? {}
+        const modeCandidate =
+          configCandidate.mode === 'design' || configCandidate.mode === 'collaboration'
+            ? configCandidate.mode
+            : 'design'
+
+        if (
+          typeof candidate.content === 'string' &&
+          (status === 'draft' || status === 'complete') &&
+          typeof candidate.lastSavedAt === 'string' &&
+          typeof configCandidate.projectName === 'string' &&
+          typeof configCandidate.audience === 'string' &&
+          typeof configCandidate.focusDetails === 'string' &&
+          typeof configCandidate.tone === 'string'
+        ) {
+          designDocument = {
+            content: candidate.content,
+            status,
+            lastSavedAt: candidate.lastSavedAt,
+            config: {
+              mode: modeCandidate,
+              projectName: configCandidate.projectName,
+              audience: configCandidate.audience,
+              focusDetails: configCandidate.focusDetails,
+              tone: configCandidate.tone,
+            },
+          }
+        }
+      }
+
+      const id = project.id as string
+      const name = project.name as string
+      const summary = project.summary as string
+      const focus = project.focus as string
+      const status = project.status as string
+      const createdAt = project.createdAt as string
+      const updatedAt = project.updatedAt as string
+      const lastOpenedAt = project.lastOpenedAt as string
+
+      projects.push({
+        id,
+        name,
+        summary,
+        focus,
+        status,
+        createdAt,
+        updatedAt,
+        lastOpenedAt,
+        designDocument,
+      })
     }
 
     return sortProjects(projects)
@@ -125,6 +208,7 @@ const defaultProjects: Project[] = [
     createdAt: '2024-03-18T09:00:00.000Z',
     updatedAt: '2024-04-06T14:30:00.000Z',
     lastOpenedAt: '2024-04-06T14:30:00.000Z',
+    designDocument: null,
   },
   {
     id: 'atlas-sessions',
@@ -135,6 +219,7 @@ const defaultProjects: Project[] = [
     createdAt: '2024-02-26T16:00:00.000Z',
     updatedAt: '2024-04-03T18:15:00.000Z',
     lastOpenedAt: '2024-04-04T08:45:00.000Z',
+    designDocument: null,
   },
   {
     id: 'aurora-synthesis',
@@ -145,6 +230,7 @@ const defaultProjects: Project[] = [
     createdAt: '2024-03-05T11:30:00.000Z',
     updatedAt: '2024-03-29T10:15:00.000Z',
     lastOpenedAt: '2024-03-29T10:15:00.000Z',
+    designDocument: null,
   },
 ]
 
@@ -214,6 +300,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
       createdAt: now,
       updatedAt: now,
       lastOpenedAt: now,
+      designDocument: null,
     }
 
     setProjects((previous) => sortProjects([project, ...previous]))
@@ -262,6 +349,94 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
+  const saveDesignDocument = React.useCallback(
+    (projectId: string, input: SaveDesignDocumentInput) => {
+      const timestamp = new Date().toISOString()
+      let savedDocument: ProjectDesignDocument | null = null
+
+      setProjects((previous) => {
+        let didUpdate = false
+
+        const next = previous.map((project) => {
+          if (project.id !== projectId) {
+            return project
+          }
+
+          didUpdate = true
+
+          const status = input.status ?? project.designDocument?.status ?? 'draft'
+          const config: VibePilotConfig = {
+            ...input.config,
+            mode:
+              input.config.mode === 'design' || input.config.mode === 'collaboration'
+                ? input.config.mode
+                : 'design',
+            projectName: input.config.projectName.trim() || project.name,
+            audience: input.config.audience,
+            focusDetails: input.config.focusDetails,
+            tone: input.config.tone,
+          }
+
+          const designDocument: ProjectDesignDocument = {
+            content: input.content,
+            status,
+            lastSavedAt: timestamp,
+            config,
+          }
+
+          savedDocument = designDocument
+
+          return {
+            ...project,
+            designDocument,
+            updatedAt: timestamp,
+          }
+        })
+
+        if (!didUpdate) {
+          return previous
+        }
+
+        return sortProjects(next)
+      })
+
+      return savedDocument
+    },
+    [],
+  )
+
+  const clearDesignDocument = React.useCallback((projectId: string) => {
+    const timestamp = new Date().toISOString()
+
+    setProjects((previous) => {
+      let didUpdate = false
+
+      const next = previous.map((project) => {
+        if (project.id !== projectId) {
+          return project
+        }
+
+        if (!project.designDocument) {
+          return project
+        }
+
+        didUpdate = true
+
+        return {
+          ...project,
+          designDocument: null,
+          updatedAt: timestamp,
+        }
+      })
+
+      if (!didUpdate) {
+        return previous
+      }
+
+      return sortProjects(next)
+    })
+  }, [])
+
   const activeProject = React.useMemo(
     () => projects.find((project) => project.id === activeProjectId) ?? null,
     [projects, activeProjectId],
@@ -275,8 +450,19 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
       createProject,
       selectProject,
       logProjectActivity,
+      saveDesignDocument,
+      clearDesignDocument,
     }),
-    [projects, activeProjectId, activeProject, createProject, selectProject, logProjectActivity],
+    [
+      projects,
+      activeProjectId,
+      activeProject,
+      createProject,
+      selectProject,
+      logProjectActivity,
+      saveDesignDocument,
+      clearDesignDocument,
+    ],
   )
 
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>

@@ -1,6 +1,16 @@
 import React from 'react'
 import { useParams } from '@tanstack/react-router'
-import { Bot, ClipboardList, MessageSquarePlus, RefreshCcw, Rocket, Sparkles } from 'lucide-react'
+import {
+  Bot,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  MessageSquarePlus,
+  RefreshCcw,
+  Rocket,
+  Save,
+  Sparkles,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,10 +24,15 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { requestVibePilotCompletion, type VibePilotConfig } from '@/lib/vibe-pilot-ai'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  requestVibePilotCompletion,
+  type VibePilotCompletion,
+  type VibePilotConfig,
+} from '@/lib/vibe-pilot-ai'
 import type { VibePilotChatMessage, VibePilotMode } from '@/lib/vibe-pilot-ai'
 import { cn } from '@/lib/utils'
-import { useProjects } from '@/lib/projects'
+import { useProjects, type ProjectDesignDocumentStatus } from '@/lib/projects'
 
 const toneOptions = [
   { value: 'encouraging product coach', label: 'Encouraging coach' },
@@ -81,6 +96,40 @@ function getModeLabel(mode: VibePilotMode) {
   return modeOptions.find((option) => option.value === mode)?.title ?? 'Mode'
 }
 
+function formatTimeSince(isoTimestamp: string) {
+  const value = new Date(isoTimestamp).getTime()
+
+  if (Number.isNaN(value)) {
+    return ''
+  }
+
+  const now = Date.now()
+  const diffSeconds = Math.max(0, Math.round((now - value) / 1000))
+
+  if (diffSeconds < 5) {
+    return 'just now'
+  }
+
+  if (diffSeconds < 60) {
+    return `${diffSeconds}s ago`
+  }
+
+  const diffMinutes = Math.round(diffSeconds / 60)
+
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`
+  }
+
+  const diffHours = Math.round(diffMinutes / 60)
+
+  if (diffHours < 24) {
+    return `${diffHours}h ago`
+  }
+
+  const diffDays = Math.round(diffHours / 24)
+  return `${diffDays}d ago`
+}
+
 export function DashboardVibePilotRoute() {
   const [phase, setPhase] = React.useState<Phase>('intro')
   const [stepIndex, setStepIndex] = React.useState(0)
@@ -99,9 +148,16 @@ export function DashboardVibePilotRoute() {
   const [isGenerating, setIsGenerating] = React.useState(false)
   const [kickoffStatus, setKickoffStatus] = React.useState<KickoffStatus>('idle')
   const [error, setError] = React.useState<string | null>(null)
+  const [documentDraft, setDocumentDraft] = React.useState('')
+  const [documentStatus, setDocumentStatus] = React.useState<ProjectDesignDocumentStatus>('draft')
+  const [lastSavedAt, setLastSavedAt] = React.useState<string | null>(null)
+  const [isSavingDocument, setIsSavingDocument] = React.useState(false)
+  const [saveFeedback, setSaveFeedback] = React.useState<'idle' | 'saved'>('idle')
+  const [saveError, setSaveError] = React.useState<string | null>(null)
 
   const { projectId } = useParams({ from: '/dashboard/$projectId/vibe-pilot' })
-  const { activeProject, logProjectActivity } = useProjects()
+  const { activeProject, logProjectActivity, saveDesignDocument, clearDesignDocument } =
+    useProjects()
   const activeProjectName = activeProject?.name ?? ''
   const activeProjectSummary = activeProject?.summary ?? ''
   const activeProjectFocus = activeProject?.focus ?? ''
@@ -124,11 +180,11 @@ export function DashboardVibePilotRoute() {
       setHasEditedFocusDetails(false)
     }
 
-    if (!hasEditedProjectName && activeProjectName) {
+    if (!hasEditedProjectName) {
       setProjectName(activeProjectName)
     }
 
-    if (!hasEditedFocusDetails && activeProjectFocus) {
+    if (!hasEditedFocusDetails) {
       setFocusDetails(activeProjectFocus)
     }
   }, [
@@ -139,12 +195,98 @@ export function DashboardVibePilotRoute() {
     hasEditedFocusDetails,
   ])
 
+  React.useEffect(() => {
+    kickoffRequestIdRef.current += 1
+    chatRequestIdRef.current += 1
+    kickoffAbortControllerRef.current?.abort()
+    chatAbortControllerRef.current?.abort()
+    kickoffAbortControllerRef.current = null
+    chatAbortControllerRef.current = null
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+      autoSaveTimeoutRef.current = null
+    }
+
+    savedDocumentContentRef.current = ''
+    setDocumentDraft('')
+    setDocumentStatus('draft')
+    setLastSavedAt(null)
+    setSaveFeedback('idle')
+    setSaveError(null)
+    setPhase('intro')
+    setStepIndex(0)
+    setSessionConfig(null)
+    setMessages([])
+    setInputValue('')
+    setIsGenerating(false)
+    setKickoffStatus('idle')
+    setError(null)
+    setAudience('')
+    setMode('design')
+    setTone(toneOptions[0].value)
+  }, [activeProject?.id])
+
+  React.useEffect(() => {
+    const designDocument = activeProject?.designDocument
+
+    if (!designDocument) {
+      return
+    }
+
+    savedDocumentContentRef.current = designDocument.content
+    setDocumentDraft(designDocument.content)
+    setDocumentStatus(designDocument.status)
+    setLastSavedAt(designDocument.lastSavedAt)
+    setSaveError(null)
+  }, [activeProject?.designDocument, activeProject?.id])
+
   const messagesRef = React.useRef<ChatMessage[]>([])
   const endRef = React.useRef<HTMLDivElement | null>(null)
   const kickoffRequestIdRef = React.useRef(0)
   const chatRequestIdRef = React.useRef(0)
   const kickoffAbortControllerRef = React.useRef<AbortController | null>(null)
   const chatAbortControllerRef = React.useRef<AbortController | null>(null)
+  const savedDocumentContentRef = React.useRef('')
+  const autoSaveTimeoutRef = React.useRef<number | null>(null)
+
+  const appendAssistantMessage = React.useCallback(
+    (completion: VibePilotCompletion) => {
+      const assistantMessage: ChatMessage = {
+        id: createId('assistant'),
+        role: 'assistant',
+        content: completion.content,
+        isMock: completion.isMock,
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+
+      if (!sessionConfig || sessionConfig.mode !== 'design') {
+        return
+      }
+
+      if (savedDocumentContentRef.current.trim()) {
+        return
+      }
+
+      let didSeedDocument = false
+
+      setDocumentDraft((current) => {
+        if (current.trim()) {
+          return current
+        }
+
+        didSeedDocument = true
+        return completion.content
+      })
+
+      if (didSeedDocument) {
+        setDocumentStatus('draft')
+        setSaveFeedback('idle')
+      }
+    },
+    [sessionConfig],
+  )
 
   React.useEffect(() => {
     return () => {
@@ -160,6 +302,45 @@ export function DashboardVibePilotRoute() {
   React.useEffect(() => {
     messagesRef.current = messages
   }, [messages])
+
+  React.useEffect(() => {
+    if (phase !== 'intro') {
+      return
+    }
+
+    const designDocument = activeProject?.designDocument
+
+    if (!designDocument) {
+      return
+    }
+
+    const derivedMode: VibePilotMode =
+      designDocument.config.mode === 'collaboration' ? 'collaboration' : 'design'
+    const derivedTone =
+      toneOptions.find((option) => option.value === designDocument.config.tone)?.value ??
+      toneOptions[0].value
+
+    const config: VibePilotConfig = {
+      ...designDocument.config,
+      mode: derivedMode,
+      projectName: activeProject?.name ?? designDocument.config.projectName,
+    }
+
+    setMode(derivedMode)
+    setTone(derivedTone)
+    setSessionConfig(config)
+    setPhase('chat')
+    setKickoffStatus('done')
+    setMessages([
+      {
+        id: createId('assistant'),
+        role: 'assistant',
+        content: `Welcome back! Your design document for ${config.projectName} is ready. Let me know what you'd like to refine.`,
+      },
+    ])
+    setInputValue('')
+    setError(null)
+  }, [phase, activeProject?.designDocument, activeProject?.name])
 
   React.useEffect(() => {
     if (endRef.current) {
@@ -226,15 +407,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
           return
         }
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: createId('assistant'),
-            role: 'assistant',
-            content: completion.content,
-            isMock: completion.isMock,
-          },
-        ])
+        appendAssistantMessage(completion)
       })
       .catch((requestError) => {
         if (kickoffRequestIdRef.current !== requestId) {
@@ -272,7 +445,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
         kickoffAbortControllerRef.current = null
       }
     }
-  }, [phase, sessionConfig, kickoffStatus])
+  }, [phase, sessionConfig, kickoffStatus, appendAssistantMessage])
 
   const isLastStep = stepIndex === totalSteps - 1
 
@@ -289,6 +462,16 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
       if (projectId) {
         logProjectActivity(projectId)
       }
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+        autoSaveTimeoutRef.current = null
+      }
+      savedDocumentContentRef.current = ''
+      setDocumentDraft('')
+      setDocumentStatus('draft')
+      setLastSavedAt(null)
+      setSaveFeedback('idle')
+      setSaveError(null)
       setPhase('chat')
       setKickoffStatus('running')
       setMessages([])
@@ -321,6 +504,19 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     chatAbortControllerRef.current?.abort()
     kickoffAbortControllerRef.current = null
     chatAbortControllerRef.current = null
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+      autoSaveTimeoutRef.current = null
+    }
+    if (projectId) {
+      clearDesignDocument(projectId)
+    }
+    savedDocumentContentRef.current = ''
+    setDocumentDraft('')
+    setDocumentStatus('draft')
+    setLastSavedAt(null)
+    setSaveFeedback('idle')
+    setSaveError(null)
     setPhase('intro')
     setStepIndex(0)
     setSessionConfig(null)
@@ -336,7 +532,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     setTone(toneOptions[0].value)
     setHasEditedProjectName(false)
     setHasEditedFocusDetails(false)
-  }, [])
+  }, [clearDesignDocument, projectId])
 
   const canProceed = React.useMemo(() => {
     if (stepIndex === 0) {
@@ -378,6 +574,125 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
     return 'Co-create launch experiments, monetization angles, and product strategy.'
   }, [sessionConfig])
 
+  const hasDocument = Boolean(documentDraft.trim() || lastSavedAt)
+
+  const chatTip = React.useMemo(() => {
+    if (!sessionConfig) {
+      return ''
+    }
+
+    if (sessionConfig.mode === 'design') {
+      return hasDocument
+        ? 'Tip: Ask for refinements, acceptance criteria, or open questions.'
+        : 'Tip: Ask for UX flows, state diagrams, or success metrics.'
+    }
+
+    return 'Tip: Ask for experiments, channel strategies, or partnership ideas.'
+  }, [hasDocument, sessionConfig])
+
+  const hasUnsavedChanges = documentDraft !== savedDocumentContentRef.current
+  const canMarkComplete = Boolean(documentDraft.trim())
+
+  const handleDocumentDraftChange = (value: string) => {
+    setDocumentDraft(value)
+    setSaveError(null)
+    setSaveFeedback('idle')
+
+    if (documentStatus === 'complete') {
+      setDocumentStatus('draft')
+    }
+  }
+
+  const performDocumentSave = React.useCallback(
+    (status?: ProjectDesignDocumentStatus) => {
+      if (!sessionConfig || !projectId) {
+        return
+      }
+
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+        autoSaveTimeoutRef.current = null
+      }
+
+      setIsSavingDocument(true)
+      setSaveError(null)
+      setSaveFeedback('idle')
+
+      try {
+        const configForSave: VibePilotConfig = {
+          ...sessionConfig,
+          projectName: activeProject?.name ?? sessionConfig.projectName,
+        }
+
+        const saved = saveDesignDocument(projectId, {
+          content: documentDraft,
+          status: status ?? documentStatus,
+          config: configForSave,
+        })
+
+        if (!saved) {
+          setSaveError('Unable to save the design document. Try again in a moment.')
+          return
+        }
+
+        savedDocumentContentRef.current = saved.content
+        setDocumentStatus(saved.status)
+        setLastSavedAt(saved.lastSavedAt)
+        setSaveFeedback('saved')
+      } catch (saveException) {
+        console.error(saveException)
+        setSaveError('Unable to save the design document. Try again in a moment.')
+      } finally {
+        setIsSavingDocument(false)
+      }
+    },
+    [
+      activeProject?.name,
+      documentDraft,
+      documentStatus,
+      projectId,
+      saveDesignDocument,
+      sessionConfig,
+    ],
+  )
+
+  React.useEffect(() => {
+    if (!sessionConfig || !projectId) {
+      return
+    }
+
+    if (!hasUnsavedChanges) {
+      return
+    }
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+
+    autoSaveTimeoutRef.current = window.setTimeout(() => {
+      performDocumentSave()
+    }, 1500)
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+        autoSaveTimeoutRef.current = null
+      }
+    }
+  }, [documentDraft, hasUnsavedChanges, performDocumentSave, projectId, sessionConfig])
+
+  React.useEffect(() => {
+    if (saveFeedback !== 'saved') {
+      return
+    }
+
+    const timeout = window.setTimeout(() => setSaveFeedback('idle'), 2000)
+
+    return () => {
+      window.clearTimeout(timeout)
+    }
+  }, [saveFeedback])
+
   const handleSubmitMessage = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -409,6 +724,13 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
       }),
     )
 
+    if (documentDraft.trim()) {
+      history.push({
+        role: 'user',
+        content: `Current design document draft:\n${documentDraft}`,
+      })
+    }
+
     const requestId = chatRequestIdRef.current + 1
     chatRequestIdRef.current = requestId
 
@@ -427,13 +749,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
         return
       }
 
-      const assistantMessage: ChatMessage = {
-        id: createId('assistant'),
-        role: 'assistant',
-        content: completion.content,
-        isMock: completion.isMock,
-      }
-      setMessages((prev) => [...prev, assistantMessage])
+      appendAssistantMessage(completion)
     } catch (requestError) {
       if (chatRequestIdRef.current !== requestId || isAbortError(requestError)) {
         return
@@ -621,7 +937,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
                       ? 'Share the features or requirements you have so far'
                       : 'Describe the opportunities, goals, or challenges you want to explore'}
                   </Label>
-                  <textarea
+                  <Textarea
                     id="project-details"
                     value={focusDetails}
                     onChange={(event) => {
@@ -637,7 +953,7 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
                           ? `What areas should we co-create on to move ${activeProjectFocus} forward?`
                           : 'What areas should we co-create on? Pricing, partnerships, onboarding, community?'
                     }
-                    className="min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className="min-h-[160px]"
                     required
                   />
                 </div>
@@ -728,92 +1044,189 @@ Audience: ${sessionConfig.audience || 'Not specified yet.'}`
             </div>
           ) : null}
 
-          <Card className="flex min-h-[460px] flex-col border-muted/70">
-            <CardContent className="flex flex-1 flex-col gap-0 p-0">
-              <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={cn(
-                      'flex gap-3 text-sm',
-                      message.role === 'user'
-                        ? 'justify-end text-foreground'
-                        : 'justify-start text-muted-foreground',
-                    )}
-                  >
-                    {message.role === 'assistant' ? (
-                      <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Bot className="h-4 w-4" />
-                      </div>
-                    ) : null}
+          <div
+            className={cn(
+              'flex flex-col gap-6',
+              hasDocument && 'lg:grid lg:grid-cols-[minmax(0,1fr)_380px]',
+            )}
+          >
+            {hasDocument ? (
+              <Card className="flex flex-col border-muted/70">
+                <CardHeader className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-xl text-foreground">Design document</CardTitle>
+                      <Badge
+                        variant={documentStatus === 'complete' ? 'default' : 'outline'}
+                        className={cn(
+                          documentStatus === 'complete'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'border-primary/60 text-primary',
+                        )}
+                      >
+                        {documentStatus === 'complete' ? 'Complete' : 'Draft'}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                      {isSavingDocument ? (
+                        <span className="inline-flex items-center gap-1">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Saving…
+                        </span>
+                      ) : hasUnsavedChanges ? (
+                        <span className="text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                      ) : lastSavedAt ? (
+                        <span>Saved {formatTimeSince(lastSavedAt)}</span>
+                      ) : (
+                        <span>Not saved yet</span>
+                      )}
+                      {saveFeedback === 'saved' ? (
+                        <span className="inline-flex items-center gap-1 text-primary">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Saved
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-muted-foreground">
+                      Collaborate on the draft—changes auto-save after a short pause.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => performDocumentSave()}
+                        disabled={isSavingDocument || !sessionConfig || !hasUnsavedChanges}
+                      >
+                        <Save className="mr-2 h-4 w-4" />
+                        Save now
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => performDocumentSave('complete')}
+                        disabled={isSavingDocument || !sessionConfig || !canMarkComplete}
+                      >
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Mark complete
+                      </Button>
+                    </div>
+                  </div>
+                  {saveError ? (
+                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                      {saveError}
+                    </div>
+                  ) : null}
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    value={documentDraft}
+                    onChange={(event) => handleDocumentDraftChange(event.target.value)}
+                    placeholder="Capture the flows, states, and success metrics for this project."
+                    className="min-h-[420px]"
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+
+            <Card
+              className={cn(
+                'flex min-h-[460px] flex-col border-muted/70',
+                hasDocument && 'lg:col-start-2',
+              )}
+            >
+              <CardHeader className="border-b border-muted/70 bg-card/70 px-6 py-4">
+                <CardTitle className="text-base text-foreground">Vibe Pilot chat</CardTitle>
+                <CardDescription className="text-sm text-muted-foreground">
+                  {hasDocument
+                    ? 'Ask for refinements and we’ll weave updates into your draft.'
+                    : 'Kick off the conversation to spin up your first design draft.'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-1 flex-col gap-0 p-0">
+                <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
+                  {messages.map((message) => (
                     <div
+                      key={message.id}
                       className={cn(
-                        'max-w-[75%] whitespace-pre-wrap rounded-lg border px-4 py-3 shadow-sm',
-                        message.role === 'assistant'
-                          ? 'border-muted/70 bg-muted/40 text-foreground'
-                          : 'border-primary bg-primary text-primary-foreground',
+                        'flex gap-3 text-sm',
+                        message.role === 'user'
+                          ? 'justify-end text-foreground'
+                          : 'justify-start text-muted-foreground',
                       )}
                     >
-                      {message.role === 'assistant' && message.isMock ? (
-                        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          Demo preview
+                      {message.role === 'assistant' ? (
+                        <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Bot className="h-4 w-4" />
                         </div>
                       ) : null}
-                      <p>{message.content}</p>
-                    </div>
-                    {message.role === 'user' ? (
-                      <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 text-primary">
-                        <MessageSquarePlus className="h-4 w-4" />
+                      <div
+                        className={cn(
+                          'max-w-[75%] whitespace-pre-wrap rounded-lg border px-4 py-3 shadow-sm',
+                          message.role === 'assistant'
+                            ? 'border-muted/70 bg-muted/40 text-foreground'
+                            : 'border-primary bg-primary text-primary-foreground',
+                        )}
+                      >
+                        {message.role === 'assistant' && message.isMock ? (
+                          <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Demo preview
+                          </div>
+                        ) : null}
+                        <p>{message.content}</p>
                       </div>
-                    ) : null}
-                  </div>
-                ))}
-                {isGenerating ? (
-                  <div className="flex gap-3 text-sm text-muted-foreground">
-                    <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                      <Bot className="h-4 w-4 animate-pulse" />
+                      {message.role === 'user' ? (
+                        <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full border border-primary/40 text-primary">
+                          <MessageSquarePlus className="h-4 w-4" />
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="max-w-[75%] rounded-lg border border-dashed border-muted/70 bg-muted/30 px-4 py-3">
-                      <p>Vibe Pilot is thinking…</p>
+                  ))}
+                  {isGenerating ? (
+                    <div className="flex gap-3 text-sm text-muted-foreground">
+                      <div className="mt-1 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Bot className="h-4 w-4 animate-pulse" />
+                      </div>
+                      <div className="max-w-[75%] rounded-lg border border-dashed border-muted/70 bg-muted/30 px-4 py-3">
+                        <p>Vibe Pilot is thinking…</p>
+                      </div>
                     </div>
+                  ) : null}
+                  <div ref={endRef} />
+                </div>
+              </CardContent>
+              <CardFooter className="border-t border-muted/70 bg-card/70 p-4">
+                <form className="flex w-full flex-col gap-3" onSubmit={handleSubmitMessage}>
+                  <div className="grid gap-2">
+                    <Label htmlFor="vibe-pilot-message" className="sr-only">
+                      Message Vibe Pilot
+                    </Label>
+                    <Textarea
+                      id="vibe-pilot-message"
+                      value={inputValue}
+                      onChange={(event) => {
+                        setInputValue(event.target.value)
+                        if (error) {
+                          setError(null)
+                        }
+                      }}
+                      placeholder="Share the next question, update, or experiment you want to explore together."
+                      className="min-h-[90px]"
+                      disabled={isGenerating}
+                    />
                   </div>
-                ) : null}
-                <div ref={endRef} />
-              </div>
-            </CardContent>
-            <CardFooter className="border-t border-muted/70 bg-card/70 p-4">
-              <form className="flex w-full flex-col gap-3" onSubmit={handleSubmitMessage}>
-                <div className="grid gap-2">
-                  <Label htmlFor="vibe-pilot-message" className="sr-only">
-                    Message Vibe Pilot
-                  </Label>
-                  <textarea
-                    id="vibe-pilot-message"
-                    value={inputValue}
-                    onChange={(event) => {
-                      setInputValue(event.target.value)
-                      if (error) {
-                        setError(null)
-                      }
-                    }}
-                    placeholder="Share the next question, update, or experiment you want to explore together."
-                    className="min-h-[90px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    disabled={isGenerating}
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span>
-                    {sessionConfig.mode === 'design'
-                      ? 'Tip: Ask for UX flows, state diagrams, or success metrics.'
-                      : 'Tip: Ask for experiments, channel strategies, or partnership ideas.'}
-                  </span>
-                  <Button type="submit" disabled={isGenerating || !inputValue.trim()}>
-                    Send to Vibe Pilot
-                  </Button>
-                </div>
-              </form>
-            </CardFooter>
-          </Card>
+                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <span>{chatTip}</span>
+                    <Button type="submit" disabled={isGenerating || !inputValue.trim()}>
+                      Send to Vibe Pilot
+                    </Button>
+                  </div>
+                </form>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       ) : null}
     </div>
