@@ -70,6 +70,38 @@ describe('DesignDocumentService', () => {
     expect(introCount).toBe(1)
   })
 
+  it('parses document section when chat references the word document', async () => {
+    const request = vi.fn().mockResolvedValue({
+      content: [
+        'Chat:',
+        'Here is a quick summary of the document: we clarified the flows.',
+        '',
+        'Document:',
+        '# Plan',
+        '',
+        'Details about next steps.',
+      ].join('\n'),
+      isMock: false,
+    })
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      requestCompletion: request,
+    })
+
+    await service.sendMessage('summarize updates')
+
+    const state = service.getState()
+    const assistantMessage = state.messages.find(
+      (message) => message.role === 'assistant' && message.id !== 'seed',
+    )
+
+    expect(assistantMessage?.content).toBe(
+      'Here is a quick summary of the document: we clarified the flows.',
+    )
+    expect(state.document).toBe('# Plan\n\nDetails about next steps.')
+  })
+
   it('tracks save events and allows reset and finalize flows', () => {
     const service = new DesignDocumentService({
       projectName: 'Glow Deck',
