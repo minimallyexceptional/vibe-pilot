@@ -134,6 +134,68 @@ describe('DesignDocumentService', () => {
     expect(state.document).toBe('# Updated Outline\n\n- Step one')
   })
 
+  it('parses document section when the label is presented as a list item', async () => {
+    const request = vi.fn().mockResolvedValue({
+      content: [
+        'Chat:',
+        'Updated the outline and kept the previous context.',
+        '',
+        '- Document:',
+        '# Plan',
+        '',
+        'Details for the next phase.',
+      ].join('\n'),
+      isMock: false,
+    })
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      requestCompletion: request,
+    })
+
+    await service.sendMessage('preserve the document but reply with a list label')
+
+    const state = service.getState()
+    const assistantMessage = state.messages.find(
+      (message) => message.role === 'assistant' && message.id !== 'seed',
+    )
+
+    expect(assistantMessage?.content).toBe('Updated the outline and kept the previous context.')
+    expect(state.document).toBe('# Plan\n\nDetails for the next phase.')
+  })
+
+  it('parses document section when the label appears as a heading', async () => {
+    const request = vi.fn().mockResolvedValue({
+      content: [
+        'Chat:',
+        'Captured the remaining ideas in the document section below.',
+        '',
+        '## Document:',
+        '# Launch Checklist',
+        '',
+        '- Verify staging',
+      ].join('\n'),
+      isMock: false,
+    })
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      requestCompletion: request,
+    })
+
+    await service.sendMessage('format the document label as a heading')
+
+    const state = service.getState()
+    const assistantMessage = state.messages.find(
+      (message) => message.role === 'assistant' && message.id !== 'seed',
+    )
+
+    expect(assistantMessage?.content).toBe(
+      'Captured the remaining ideas in the document section below.',
+    )
+    expect(state.document).toBe('# Launch Checklist\n\n- Verify staging')
+  })
+
   it('tracks save events and allows reset and finalize flows', () => {
     const service = new DesignDocumentService({
       projectName: 'Glow Deck',
