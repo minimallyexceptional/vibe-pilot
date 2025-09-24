@@ -180,11 +180,11 @@ export function DashboardVibePilotRoute() {
       setHasEditedFocusDetails(false)
     }
 
-    if (!hasEditedProjectName && activeProjectName) {
+    if (!hasEditedProjectName) {
       setProjectName(activeProjectName)
     }
 
-    if (!hasEditedFocusDetails && activeProjectFocus) {
+    if (!hasEditedFocusDetails) {
       setFocusDetails(activeProjectFocus)
     }
   }, [
@@ -196,6 +196,13 @@ export function DashboardVibePilotRoute() {
   ])
 
   React.useEffect(() => {
+    kickoffRequestIdRef.current += 1
+    chatRequestIdRef.current += 1
+    kickoffAbortControllerRef.current?.abort()
+    chatAbortControllerRef.current?.abort()
+    kickoffAbortControllerRef.current = null
+    chatAbortControllerRef.current = null
+
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current)
       autoSaveTimeoutRef.current = null
@@ -207,6 +214,17 @@ export function DashboardVibePilotRoute() {
     setLastSavedAt(null)
     setSaveFeedback('idle')
     setSaveError(null)
+    setPhase('intro')
+    setStepIndex(0)
+    setSessionConfig(null)
+    setMessages([])
+    setInputValue('')
+    setIsGenerating(false)
+    setKickoffStatus('idle')
+    setError(null)
+    setAudience('')
+    setMode('design')
+    setTone(toneOptions[0].value)
   }, [activeProject?.id])
 
   React.useEffect(() => {
