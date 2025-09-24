@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
+  FileText,
   ListChecks,
   LogIn,
   Menu,
@@ -42,6 +43,12 @@ const sidebarItems = [
     description: 'Spin up an AI copilot for product design and strategy.',
     to: '/dashboard/$projectId/vibe-pilot',
     icon: Bot,
+  },
+  {
+    label: 'Design Doc Builder',
+    description: 'Co-create a polished markdown brief with gentle AI guidance.',
+    to: '/dashboard/$projectId/design-document',
+    icon: FileText,
   },
   {
     label: 'Vibe Journal',
