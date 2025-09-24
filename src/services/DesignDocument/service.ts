@@ -299,23 +299,145 @@ function parseAssistantResponse(raw: string) {
     return { chat: 'I captured your notes.', document: '' }
   }
 
-  const docLabel =
-    /^\s*(?:> ?)*?(?:[-*+]\s+|\d+\.\s+|#{1,6}\s+)?(?:[*_`~]{0,3})?Document(?:[*_`~]{0,3})?\s*:/im
-  const docMatch = docLabel.exec(normalized)
+  const chatMatch = findLabeledSection(normalized, 'chat')
+  const documentMatch = findLabeledSection(normalized, 'document', chatMatch?.labelEnd ?? 0)
 
-  if (!docMatch) {
-    const chat = normalized.replace(/^Chat\s*:/i, '').trim() || normalized
+  if (!documentMatch) {
+    const chat =
+      (chatMatch ? normalized.slice(chatMatch.contentStart) : normalized)
+        .replace(/^Chat\s*:/i, '')
+        .trim() || normalized
+
     return { chat, document: '' }
   }
 
-  const index = docMatch.index
-  const before = normalized.slice(0, index)
-  const after = normalized.slice(index + docMatch[0].length)
-
-  const chat = before.replace(/^Chat\s*:/i, '').trim() || 'Here’s the latest update.'
-  const document = after.trim()
+  const chatStart = chatMatch ? chatMatch.contentStart : 0
+  const chatEnd = documentMatch.labelStart
+  const chat = normalized.slice(chatStart, chatEnd).trim() || 'Here’s the latest update.'
+  const document = normalized.slice(documentMatch.contentStart).trim()
 
   return { chat, document }
+}
+
+type SectionName = 'chat' | 'document'
+
+type SectionMatch = {
+  labelStart: number
+  labelEnd: number
+  contentStart: number
+}
+
+function findLabeledSection(input: string, label: SectionName, fromIndex = 0): SectionMatch | null {
+  const lower = input.toLowerCase()
+  const needle = label.toLowerCase()
+  const length = needle.length
+  let searchIndex = fromIndex
+
+  while (searchIndex < input.length) {
+    const index = lower.indexOf(needle, searchIndex)
+
+    if (index === -1) {
+      return null
+    }
+
+    const afterIndex = index + length
+    const trailing = input.slice(afterIndex)
+    const colonMatch = /^[*_`~]{0,3}\s*:/.exec(trailing)
+
+    if (!colonMatch) {
+      searchIndex = afterIndex
+      continue
+    }
+
+    if (!isLabelBoundaryValid(input, index)) {
+      searchIndex = afterIndex
+      continue
+    }
+
+    const labelEnd = afterIndex + colonMatch[0].length
+    const contentStart = skipLabelSuffix(input, labelEnd)
+    const labelStart = findLabelStartIndex(input, index)
+
+    return { labelStart, labelEnd, contentStart }
+  }
+
+  return null
+}
+
+function isLabelBoundaryValid(input: string, index: number) {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    const char = input[i]
+
+    if (char === '\n' || char === '\r') {
+      return true
+    }
+
+    if (char === ' ' || char === '\t') {
+      continue
+    }
+
+    if (/[A-Za-z0-9]/.test(char)) {
+      return false
+    }
+
+    return true
+  }
+
+  return true
+}
+
+function skipLabelSuffix(input: string, start: number) {
+  let index = start
+
+  while (index < input.length && (input[index] === ' ' || input[index] === '\t')) {
+    index += 1
+  }
+
+  if (input.slice(index, index + 2) === '\r\n') {
+    return index + 2
+  }
+
+  if (input[index] === '\n' || input[index] === '\r') {
+    return index + 1
+  }
+
+  return index
+}
+
+function findLabelStartIndex(input: string, index: number) {
+  let start = index
+
+  while (start > 0) {
+    const previous = input[start - 1]
+
+    if (previous === '\n' || previous === '\r') {
+      break
+    }
+
+    if (previous === ' ' || previous === '\t') {
+      start -= 1
+      continue
+    }
+
+    if ('>_*`~#-+'.includes(previous)) {
+      start -= 1
+      continue
+    }
+
+    if (previous === '.' && start >= 2 && /\d/.test(input[start - 2])) {
+      start -= 1
+      continue
+    }
+
+    if (/\d/.test(previous)) {
+      start -= 1
+      continue
+    }
+
+    break
+  }
+
+  return start
 }
 
 const defaultRequestCompletion: RequestCompletion = async ({

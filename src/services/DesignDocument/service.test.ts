@@ -196,6 +196,34 @@ describe('DesignDocumentService', () => {
     expect(state.document).toBe('# Launch Checklist\n\n- Verify staging')
   })
 
+  it('parses document updates when the assistant keeps the labels on the same line', async () => {
+    const request = vi.fn().mockResolvedValue({
+      content: [
+        'Chat: Thanks for the reminder to reuse the saved draft. Document:',
+        '# Ready Plan',
+        '',
+        'Key flows are intact.',
+      ].join('\n'),
+      isMock: false,
+    })
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      initialDocument: '# Ready Plan\n\nInitial version',
+      requestCompletion: request,
+    })
+
+    await service.sendMessage('please restore the previous outline without changes')
+
+    const state = service.getState()
+    const assistantMessage = state.messages.find(
+      (message) => message.role === 'assistant' && message.id !== 'seed',
+    )
+
+    expect(assistantMessage?.content).toBe('Thanks for the reminder to reuse the saved draft.')
+    expect(state.document).toBe('# Ready Plan\n\nKey flows are intact.')
+  })
+
   it('tracks save events and allows reset and finalize flows', () => {
     const service = new DesignDocumentService({
       projectName: 'Glow Deck',
