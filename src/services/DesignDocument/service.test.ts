@@ -102,6 +102,38 @@ describe('DesignDocumentService', () => {
     expect(state.document).toBe('# Plan\n\nDetails about next steps.')
   })
 
+  it('parses document section when the label is indented', async () => {
+    const request = vi.fn().mockResolvedValue({
+      content: [
+        'Chat:',
+        'Captured the latest structure and applied the requested edits.',
+        '',
+        '    Document:',
+        '# Updated Outline',
+        '',
+        '- Step one',
+      ].join('\n'),
+      isMock: false,
+    })
+
+    const service = new DesignDocumentService({
+      projectName: 'Glow Deck',
+      requestCompletion: request,
+    })
+
+    await service.sendMessage('reformat with indentation in the label')
+
+    const state = service.getState()
+    const assistantMessage = state.messages.find(
+      (message) => message.role === 'assistant' && message.id !== 'seed',
+    )
+
+    expect(assistantMessage?.content).toBe(
+      'Captured the latest structure and applied the requested edits.',
+    )
+    expect(state.document).toBe('# Updated Outline\n\n- Step one')
+  })
+
   it('tracks save events and allows reset and finalize flows', () => {
     const service = new DesignDocumentService({
       projectName: 'Glow Deck',

@@ -299,7 +299,7 @@ function parseAssistantResponse(raw: string) {
     return { chat: 'I captured your notes.', document: '' }
   }
 
-  const docLabel = /^Document\s*:/im
+  const docLabel = /^\s*Document\s*:/im
   const docMatch = docLabel.exec(normalized)
 
   if (!docMatch) {
